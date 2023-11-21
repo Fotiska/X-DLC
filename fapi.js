@@ -357,7 +357,7 @@
         }
         startAtlasModifying() {
             let atlasModifier = this;
-            function repeat() {
+            async function repeat() {
                 if (atlasModifier.arrowsToAdd.length === 0) {
                     game.PlayerSettings.arrowAtlasImage.onload = () => game.navigation.gamePage.game.render.createArrowTexture(game.PlayerSettings.arrowAtlasImage);
                     atlasModifier.isAtlasModifying = false;
@@ -368,12 +368,14 @@
                 let src = pair[1];
 
                 let x = (index - 1) % 8;
-                let y = ~~(index / 8);
+                let y = ~~((index - 1) / 8);
                 const img1 = new Image();
                 const img2 = new Image();
                 img1.src = game.PlayerSettings.arrowAtlasImage.src;
                 img2.src = src;
-                img2.onload = function() {
+                img1.crossOrigin = '*';
+                img2.crossOrigin = '*';
+                let save = async function() {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
 
@@ -382,12 +384,23 @@
 
                     ctx.drawImage(img1, 0, 0);
                     ctx.drawImage(img2, x * 256, y * 256);
-
                     game.PlayerSettings.arrowAtlasImage = new Image;
-                    console.log(canvas);
                     game.PlayerSettings.arrowAtlasImage.src = canvas.toDataURL('image/png');
                     repeat()
+                    img1.remove();
+                    img2.remove();
                 };
+                let i = 0;
+                img1.onload = () => {
+                    i++;
+                    if (i === 2) save()
+                };
+                img2.onload = () => {
+                    i++;
+                    if (i === 2) save()
+                };
+                document.body.appendChild(img1);
+                document.body.appendChild(img2);
             }
             this.isAtlasModifying = true;
             repeat();
