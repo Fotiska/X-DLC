@@ -1,7 +1,7 @@
 (() => {
     window.document.addEventListener('fapishowmods', function() {
-        // добавляем в конце ссылки `?raw=true`
-        window.game.FAPI.ModHandler.showMod('Название', 'Автор', "https://github.com/Fotiska/X-DLC/blob/main/images/purple_diagonal_arrow.png?raw=true"); // Отобразить мод в меню
+        // заменяется `githubusercontent` на `githack`
+        window.game.FAPI.ModHandler.showMod('Название', 'Автор', "https://raw.githack.com/Fotiska/X-DLC/blob/main/images/purple_diagonal_arrow.png"); // Отобразить мод в меню
     });
 
     window.document.addEventListener('fapiloaded', function() {
@@ -12,7 +12,7 @@
         стрелочка.info = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
         стрелочка.does = ["Sends a signal diagonally, skipping `n` cells.","Передает сигнал по диагонали через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
         // добавляем в конце ссылки `?raw=true`
-        стрелочка.icon_url = "https://github.com/Fotiska/X-DLC/blob/main/images/purple_diagonal_arrow.png?raw=true"; // Текстурка стрелочки (250x250) ( берёте с гитхаба )
+        стрелочка.icon_url = "https://github.com/Fotiska/X-DLC/blob/main/images/purple_diagonal_arrow.png"; // Текстурка стрелочки (250x250) ( берёте с гитхаба )
         стрелочка.is_pressable = true; // Может ли стрелочка нажиматься ( true = да | false = нет )
         стрелочка.update = (arrow) => {
             if (arrow.signalsCount > 0) arrow.signal = 6;

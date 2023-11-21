@@ -384,6 +384,7 @@
                     ctx.drawImage(img2, x * 256, y * 256);
 
                     game.PlayerSettings.arrowAtlasImage = new Image;
+                    console.log(canvas);
                     game.PlayerSettings.arrowAtlasImage.src = canvas.toDataURL('image/png');
                     repeat()
                 };
@@ -633,6 +634,7 @@
                 unknownMods.forEach((mod) => {
                     text += mod + '\n';
                 });
+                text += 'Желательно выйти с карты чтобы не перезаписать её 💀';
                 alert(text);
                 // window.open('https://logic-arrows.io/maps');
                 // window.close();
@@ -701,13 +703,13 @@
         createModal() {
             let modal = document.createElement('dialog');
             modal.classList.add('ui-mod-modal');
-            window.API.main.modals.push(modal);
+            this.modals.push(modal);
             return modal;
         }
 
         openedAnyModal() {
             let opened = false;
-            window.API.main.modals.forEach((modal) => {
+            this.modals.forEach((modal) => {
                 if (modal !== undefined) opened = opened || modal.open;
             })
             return opened;
@@ -715,7 +717,7 @@
 
         closeAnyModal() {
             let closed = false;
-            window.API.main.modals.forEach((modal) => {
+            this.modals.forEach((modal) => {
                 if (modal !== undefined && modal.open) {
                     modal.close();
                     closed = true;
@@ -932,7 +934,7 @@
             let prevLeftClickCallback = game.navigation.gamePage.playerControls.leftClickCallback;
             let prevKeyDownCallback = game.navigation.gamePage.playerControls.keyDownCallback;
             game.navigation.gamePage.playerControls.keyDownCallback = function(e, t) {
-                if (e === "Escape" && fapi.closeAnyModal()) return;
+                if (e === "Escape" && fapi.ModalHandler.closeAnyModal()) return;
                 prevKeyDownCallback.apply(game.navigation.gamePage.playerControls, e, t);
                 // TODO: Возможность подписаться на ивент
             }
@@ -1051,9 +1053,6 @@
             });
             game.navigation.gamePage.playerUI.toolbarController.inventory.itemsBlock.appendChild(line);
             game.navigation.gamePage.playerUI.toolbarController.arrowGroups.push(arrowGroup);
-        }
-        closeAnyModal = function() {
-            return false;
         }
     }
 
