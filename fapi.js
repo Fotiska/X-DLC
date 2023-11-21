@@ -3,9 +3,6 @@
         constructor() {
             this.id = -1;
             this.idname = 'unknown.unknown';
-            this.name = 'Unknown';
-            this.author = 'Unknown';
-            this.description = 'Unknown';
             this.arrows = {};
         }
     }
@@ -1076,7 +1073,7 @@
             });
             return mod;
         }
-        registerMod(name, idname, author, description, on_registered) {
+        registerMod(idname, on_registered) {
             let regex = /^[a-z._]+$/;
             if (!regex.test(idname)) {
                 console.log(`Can\`not load mod, incorrect id: \`${idname}\``);
@@ -1086,8 +1083,6 @@
             mod.id = this.mods.length;
             mod.name = name;
             mod.idname = idname;
-            mod.author = author;
-            mod.description = description;
             this.mods.push(mod);
             console.log(`Mod \`${idname}\` registered`)
             on_registered(mod);

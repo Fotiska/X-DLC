@@ -172,7 +172,7 @@ window.document.addEventListener('fapiloaded', function() {
     game.navigation.gamePage.playerUI.toolbarController.inventory.element.appendChild(purple_diagonal_modal);
     game.navigation.gamePage.playerUI.toolbarController.inventory.element.appendChild(text_block_modal);
 
-    window.game.FAPI.registerMod('DLC Core', 'fotis.dlc_core', 'Фотис', 'API для мододелов', (mod) => {
+    window.game.FAPI.registerMod('fotis.dlc_core', (mod) => {
         window.game.FAPI.registerArrows([лгбт_подсветочка, purple_arrow, purple_diagonal_arrow, text_block], mod);
         console.log('`DLC Core` loaded!');
     });
