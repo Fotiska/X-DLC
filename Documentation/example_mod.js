@@ -1,6 +1,6 @@
 (() => {
     window.document.addEventListener('fapishowmods', function() {
-        window.game.FAPI.ModHandler.showMod('Название', 'Автор', images.icon); // Отобразить мод в меню
+        window.game.FAPI.ModHandler.showMod('Название', 'Автор', "https://github.com/Fotiska/X-DLC/blob/main/images/purple_diagonal_arrow.png"); // Отобразить мод в меню
     });
 
     window.document.addEventListener('fapiloaded', function() {
