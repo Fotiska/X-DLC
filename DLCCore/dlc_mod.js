@@ -7,7 +7,7 @@ window.document.addEventListener('fapiloaded', function() {
     лгбт_подсветочка.does = ["Does nothing.","Ничего не делает.","Нічого не робить.","Нічога не рабіць."];
     лгбт_подсветочка.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/rgb_lamp.png";
     лгбт_подсветочка.is_pressable = true;
-    лгбт_подсветочка.update = (arrow) => {
+    лгбт_подсветочка.update = (arrow, chunk, x, y) => {
         let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
 
         if (color === 0) arrow.signal = arrow.signalsCount;
@@ -76,8 +76,7 @@ window.document.addEventListener('fapiloaded', function() {
     purple_arrow.does = ["Sends a signal forwards, skipping `n` cells.","Передает сигнал вперед через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
     purple_arrow.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/purple_arrow.png";
     purple_arrow.is_pressable = true;
-    purple_arrow.custom_data = [123];
-    purple_arrow.update = (arrow) => {
+    purple_arrow.update = (arrow, chunk, x, y) => {
         if (arrow.signalsCount > 0) arrow.signal = 6;
         else arrow.signal = 0;
     };
@@ -106,7 +105,7 @@ window.document.addEventListener('fapiloaded', function() {
     purple_diagonal_arrow.does = ["Sends a signal diagonally, skipping `n` cells.","Передает сигнал по диагонали через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
     purple_diagonal_arrow.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/purple_diagonal_arrow.png";
     purple_diagonal_arrow.is_pressable = true;
-    purple_diagonal_arrow.update = (arrow) => {
+    purple_diagonal_arrow.update = (arrow, chunk, x, y) => {
         if (arrow.signalsCount > 0) arrow.signal = 6;
         else arrow.signal = 0;
     };

@@ -4286,7 +4286,7 @@
                     this.gl.vertexAttribPointer(this.arrowShader.getPositionAttribute(), 2, this.gl.FLOAT, !1, 0, 0),
                     this.gl.uniform2f(this.arrowShader.getResolutionUniform(), this.gl.canvas.width, this.gl.canvas.height),
                     this.gl.uniform1f(this.arrowShader.getSizeUniform(), e),
-                    this.gl.uniform1f(this.arrowShader.getSpriteSizeUniform(), 1 / 8)
+                    this.gl.uniform1f(this.arrowShader.getSpriteSizeUniform(), 1 / 8) // ОРИГИНАЛЬНЫЙ РАЗМЕР 1/8
                 }
                 prepareTextures(e, t=1) {
                     this.gl.bindTexture(this.gl.TEXTURE_2D, e),

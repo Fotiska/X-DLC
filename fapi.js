@@ -376,8 +376,8 @@
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
 
-                    canvas.width = img1.width;
-                    canvas.height = img1.height;
+                    canvas.width = 4096;
+                    canvas.height = 4096; // Увеличить объём атласа в 2 раза
 
                     ctx.drawImage(img1, 0, 0);
                     ctx.drawImage(img2, x * 256, y * 256);
@@ -401,6 +401,45 @@
             }
             this.isAtlasModifying = true;
             repeat();
+        }
+        drawArrow(render, e, t, s, i, n, o) {
+            s -= 1;
+            if (render.lastArrowType !== s) {
+                let x;
+                let y;
+                if (s < 128) {
+                    x = s % 8;
+                    y = ~~(s / 8);
+                } else {
+                    x = (s - 128) % 8 + 8;
+                    y = ~~((s - 128) / 16);
+                }
+                // TODO: Проверить в будущем работу 256 текстур
+                render.gl.uniform2f(render.arrowShader.getSpritePositionUniform(), x / 16, y / 16);
+                render.lastArrowType = s;
+            }
+            if (render.lastArrowSignal !== i) {
+                render.gl.uniform1i(render.arrowShader.getSignalUniform(), i);
+                render.lastArrowSignal = i;
+            }
+            if (render.lastArrowRotation !== n || render.lastArrowFlipped !== o) {
+                render.gl.uniform2f(render.arrowShader.getRotationUniform(), n / 2 * Math.PI, o ? 1 : 0);
+                render.lastArrowRotation = n;
+                render.lastArrowFlipped = o;
+            }
+            render.gl.uniform2f(render.arrowShader.getPositionUniform(), e, t);
+            render.gl.drawElements(render.gl.TRIANGLES, 6, render.gl.UNSIGNED_SHORT, 0);
+        }
+        prepareArrows(render, e) {
+            render.gl.useProgram(render.arrowShader.getProgram());
+            render.gl.bindTexture(render.gl.TEXTURE_2D, render.arrowAtlas);
+            render.gl.bindBuffer(render.gl.ARRAY_BUFFER, render.positionBuffer);
+            render.gl.bindBuffer(render.gl.ELEMENT_ARRAY_BUFFER, render.indexBuffer);
+            render.gl.enableVertexAttribArray(render.arrowShader.getPositionAttribute());
+            render.gl.vertexAttribPointer(render.arrowShader.getPositionAttribute(), 2, render.gl.FLOAT, !1, 0, 0);
+            render.gl.uniform2f(render.arrowShader.getResolutionUniform(), render.gl.canvas.width, render.gl.canvas.height);
+            render.gl.uniform1f(render.arrowShader.getSizeUniform(), e);
+            render.gl.uniform1f(render.arrowShader.getSpriteSizeUniform(), 1 / 16); // ОРИГИНАЛЬНЫЙ РАЗМЕР 1/8
         }
     }
     class DataHandler {
@@ -972,7 +1011,14 @@
         init() {
             let fapi = this;
             this.DataHandler = new DataHandler(this);
+            let atlasModifier = this.AtlasModifier;
             // region Overrides
+            window.game.navigation.gamePage.game.render.drawArrow = function(e, t, s, i, n, o) {
+                atlasModifier.drawArrow(window.game.navigation.gamePage.game.render, e, t, s, i, n, o);
+            }
+            window.game.navigation.gamePage.game.render.prepareArrows = function(e, t, s, i, n, o) {
+                atlasModifier.prepareArrows(window.game.navigation.gamePage.game.render, e, t, s, i, n, o);
+            }
             game.navigation.gamePage.playerUI.toolbarController.uiToolbar.items[0].__proto__.setImage = function(id) {
                 if (id < 24) this.image.src = `res/sprites/arrow${id + 1}.png?v=${game.PlayerSettings.version}`;
                 else {
