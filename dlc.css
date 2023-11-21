@@ -3,6 +3,8 @@
     --light-blue: #375fbb !important;
     --blue: #2a4a95 !important;
     --dark-blue: #244389 !important;
+    --light-green: #37bb4d !important;
+    --light-red: #bb3737 !important;
 }
 
 .ui-new-item, .ui-saved-item {
@@ -112,4 +114,60 @@ dialog.ui-mod-modal > div.ui-mod-pair > div.ui-mod-name {
     padding: 10px;
     line-height: 50px;
     margin-left: 10px;
+}
+
+.side-element-mods-load-input {
+    border: none;
+    border-radius: 10px;
+    padding: 5px;
+    margin: 10px;
+    background-color: var(--light-blue);
+    width: calc(100% - 20px);
+    height: 40px;
+    font-family: Nunito;
+    font-size: 20px;
+}
+
+.side-element-mods-load {
+    border-radius: 10px;
+    padding: 5px;
+    margin: 10px;
+    background-color: var(--light-green);
+    width: calc(100% - 30px);
+    height: 25px;
+    line-height: 25px;
+    font-family: Nunito;
+    font-size: 20px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.side-element-mods-reload {
+    border-radius: 10px;
+    padding: 5px;
+    margin: 10px;
+    background-color: var(--light-green);
+    width: calc(100% - 30px);
+    height: 25px;
+    line-height: 25px;
+    font-family: Nunito;
+    font-size: 20px;
+    text-align: center;
+    cursor: pointer;
+    visibility: hidden;
+}
+
+.side-element-mods-srcs {
+    padding: 15px;
+    display: grid;
+    row-gap: 10px;
+}
+
+.mod-src-delete {
+    background-color: red;
+    font-family: Nunito;
+    cursor: pointer;
+    background-color: var(--light-red);
+    padding: 3px;
+    border-radius: 8px;
 }

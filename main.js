@@ -1,7 +1,6 @@
 (async () => {
     function inject() {
         sessionStorage.api_sources = JSON.stringify({
-            'atlas': chrome.runtime.getURL('images/atlas.png'),
             'icon': chrome.runtime.getURL('images/icon128.png'),
             'rgb_lamp': chrome.runtime.getURL('images/rgb_lamp.png'),
             'purple_arrow': chrome.runtime.getURL('images/purple_arrow.png'),

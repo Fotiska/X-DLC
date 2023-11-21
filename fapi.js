@@ -524,7 +524,9 @@
             else game.navigation.gamePage.playerControls.activeCustomData = -1;
         }
         setArrow(controls, type) {
-            controls.activeCustomData = this.FAPI.getArrowByType(type).custom_data;
+            let marrow = this.FAPI.getArrowByType(type);
+            if (marrow === undefined) return;
+            controls.activeCustomData = marrow.custom_data;
         }
         pasteFromText(selectedMap, data, on_loaded, on_error) {
             selectedMap.tempMap.clear();
@@ -787,23 +789,87 @@
                 title.className = 'side-element-mods-title';
                 title.textContent = 'Загруженные моды:';
 
+                let mods = document.createElement('div');
+                mods.className = 'side-element-mods-container';
+
+                let srcs = document.createElement('div');
+                srcs.className = 'side-element-mods-srcs';
+
+                let mod_input = document.createElement('input');
+                mod_input.className = 'side-element-mods-load-input';
+                mod_input.placeholder = 'Ссылка на мод ( github )';
+
+                let load = document.createElement('div');
+                load.className = 'side-element-mods-load';
+                load.textContent = 'Загрузить';
+                let modHandler = this;
+
+                load.onclick = () => {
+                    if (localStorage.mods === undefined) localStorage.mods = JSON.stringify([]);
+                    let mods = JSON.parse(localStorage.mods);
+                    if (mods.includes(mod_input.value)) return;
+
+                    this.showSrc(mod_input.value)
+                    mods.push(mod_input.value);
+                    localStorage.mods = JSON.stringify(mods);
+                    this.reload.style.visibility = 'visible';
+                }
+
+                let reload = document.createElement('div');
+                reload.className = 'side-element-mods-reload';
+                reload.textContent = 'Применить';
+                reload.onclick = () => {
+                    window.open(window.location.href)
+                    window.close();
+                }
+
                 side_mods.appendChild(title)
+                side_mods.appendChild(mods)
+                side_mods.appendChild(mod_input)
+                side_mods.appendChild(load)
+                side_mods.appendChild(reload)
+                side_mods.appendChild(srcs)
                 side_element.appendChild(this.menu_content)
                 side_element.appendChild(side_mods);
 
-                // side_element.onclick = () => {
-                //     this.menu_content.innerHTML = '';
-                //     document.querySelector('.side-menu-element-selected').className = 'side-menu-element';
-                //     window.game.navigation.modsOpened = true;
-                // }
                 menu_main.appendChild(side_element);
-                this.side_mods = side_mods;
+                this.mods = mods;
+                this.srcs = srcs;
+                this.reload = reload;
 
-                window.document.dispatchEvent(new CustomEvent('fapishowmods'));
+                if (localStorage.mods !== undefined) {
+                    let mods = JSON.parse(localStorage.mods);
+                    mods.forEach((mod_src) => {
+                        let mod = document.createElement('script')
+                        mod.src = mod_src;
+                        mod.crossOrigin = 'anonymous';
+                        mod.type = 'text/javascript'
+                        document.body.appendChild(mod);
+                        this.showSrc(mod_src)
+                    });
+                }
+                setTimeout(() => window.document.dispatchEvent(new CustomEvent('fapishowmods')), 1000);
             })();
         }
+        showSrc(src) {
+            let del = document.createElement('div');
+            del.className = 'mod-src-delete';
+            del.textContent = src;
+            let modHandler = this;
+            del.onclick = function() {
+                if (localStorage.mods === undefined) localStorage.mods = JSON.stringify([]);
+                let mods = JSON.parse(localStorage.mods);
+                if (!mods.includes(src)) return;
+
+                mods.splice(mods.indexOf(src), 1);
+                localStorage.mods = JSON.stringify(mods);
+                modHandler.reload.style.visibility = 'visible';
+                del.remove();
+            }
+            this.srcs.appendChild(del);
+        }
         showMod(name, author, icon) {
-            if (this.side_mods === undefined) return;
+            if (this.mods === undefined) return;
 
             let mod_element = document.createElement('div');
             mod_element.className = 'mod';
@@ -822,7 +888,7 @@
             mod_header.appendChild(mod_icon);
             mod_header.appendChild(mod_name);
             mod_element.appendChild(mod_header);
-            this.side_mods.appendChild(mod_element);
+            this.mods.appendChild(mod_element);
         }
     }
 
