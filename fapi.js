@@ -443,16 +443,25 @@
 
         save(gameMap) {
             const data = [];
-            data.push(255); // Конец обозначений модов
-            const savedModsOrder = []
-            this.FAPI.mods.forEach((mod) => {
-                if (data.length !== 1) data.push(254);
-                mod.idname.split('').forEach((symbol) => {
-                    data.push(this.FAPI.ID_SYMBOLS.indexOf(symbol));
+            let useMods = false;
+            gameMap.chunks.forEach((chunk) => {
+                const types = chunk.getArrowTypes()
+                types.forEach((type) => {
+                    if (type > 24) useMods = true;
                 })
-                savedModsOrder.push(mod);
-            });
-            data.push(255); // Конец обозначений модов
+            })
+            const savedModsOrder = [];
+            if (useMods) {
+                data.push(255); // Конец обозначений модов
+                this.FAPI.mods.forEach((mod) => {
+                    if (data.length !== 1) data.push(254);
+                    mod.idname.split('').forEach((symbol) => {
+                        data.push(this.FAPI.ID_SYMBOLS.indexOf(symbol));
+                    })
+                    savedModsOrder.push(mod);
+                });
+                data.push(255); // Конец обозначений модов
+            }
             data.push(0, 0); // ВЕРСИЯ ИГРЫ ( НЕ МЕНЯЕТСЯ )
             data.push(255 & gameMap.chunks.size, gameMap.chunks.size >> 8 & 255);
             gameMap.chunks.forEach((chunk) => {
@@ -466,7 +475,7 @@
                 data.push(types.length - 1);
                 types.forEach((arrowType) => {
                     const isFromMod = arrowType > 24;
-                    if (isFromMod) {
+                    if (useMods && isFromMod) {
                         data.push(255); // Обозначение что это стрелочка из мода
                         let marrow = this.FAPI.getArrowByType(arrowType);
                         data.push(marrow.id); // Айди стрелочки из мода
@@ -484,7 +493,7 @@
                                 const s = arrow.rotation | (arrow.flipped ? 1 : 0) << 2;
                                 data.push(e);
                                 data.push(s);
-                                if (isFromMod) {
+                                if (useMods && isFromMod) {
                                     if (arrow.custom_data === undefined) arrow.custom_data = [];
                                     data.push(arrow.custom_data.length); // Длина данных стрелочки
                                     data.push(...arrow.custom_data); // Данные стрелочки
@@ -534,13 +543,14 @@
         }
         pickArrow(controls) {
             const e = controls.getArrowByMousePosition();
-            if (e !== undefined) game.navigation.gamePage.playerControls.activeCustomData = e.custom_data;
+            if (e !== undefined && e.custom_data !== undefined)
+                game.navigation.gamePage.playerControls.activeCustomData = e.custom_data.slice(0);
             else game.navigation.gamePage.playerControls.activeCustomData = -1;
         }
         setArrow(controls, type) {
             let marrow = this.FAPI.getArrowByType(type);
             if (marrow === undefined) return;
-            controls.activeCustomData = marrow.custom_data;
+            controls.activeCustomData = marrow.custom_data.slice(0);
         }
         pasteFromText(selectedMap, data, on_loaded, on_error) {
             selectedMap.tempMap.clear();
@@ -1004,11 +1014,12 @@
         }
 
         setArrowCustomData(tempMap, x, y, custom_data) {
+            if (custom_data === undefined) return;
             const arrow = tempMap.getArrowForEditing(x, y);
             if (arrow !== undefined && arrow.type !== 0) {
                 if (!arrow.canBeEdited) return;
                 if (game.PlayerSettings.levelArrows.includes(arrow.type)) return;
-                arrow.custom_data = custom_data;
+                arrow.custom_data = custom_data.slice(0);
             }
         }
         /**

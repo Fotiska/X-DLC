@@ -58,7 +58,7 @@ window.document.addEventListener('fapiloaded', function() {
             arrow.custom_data = лгбт_подсветочка.sdata(color, activation, transmit);
         }
     };
-    лгбт_подсветочка.custom_data = [0b11110];
+    лгбт_подсветочка.custom_data = [128];
 
     colors = ['Радужный', 'Красный', 'Синий', 'Жёлтый', 'Зелёный', 'Оранжевый', 'Фиолетовый', 'Чёрный'];
     activations = ['При сигнале', 'Всегда ( можно блокировать )', 'Когда нету сигнала'];
