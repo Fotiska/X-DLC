@@ -848,22 +848,28 @@
 
                 let mod_input = document.createElement('input');
                 mod_input.className = 'side-element-mods-load-input';
-                mod_input.placeholder = 'Ссылка на мод ( githack )';
+                mod_input.placeholder = 'Ссылка на мод ( github )';
 
                 let load = document.createElement('div');
                 load.className = 'side-element-mods-load';
                 load.textContent = 'Загрузить';
 
-                load.onclick = () => {
-                    if (!mod_input.value.includes('githubusercontent')) return;
-
-                    mod_input.value = mod_input.value.replaceAll('githubusercontent', 'githack');
+                load.onclick = async () => {
+                    let json;
+                    try {
+                        let fetch_json = await fetch(mod_input.value);
+                        json = await fetch_json.json();
+                    } catch (e) {
+                        load.textContent = 'Не удалось загрузить!';
+                        setTimeout(() => load.textContent = 'Загрузить', 500);
+                        return;
+                    }
 
                     if (localStorage.mods === undefined) localStorage.mods = JSON.stringify([]);
                     let mods = JSON.parse(localStorage.mods);
                     if (mods.includes(mod_input.value)) return;
 
-                    this.showSrc(mod_input.value)
+                    this.showMod(json, mod_input.value, false)
                     mods.push(mod_input.value);
                     localStorage.mods = JSON.stringify(mods);
                     this.reload.style.visibility = 'visible';
@@ -892,12 +898,12 @@
                 this.reload = reload;
 
                 this.showMods.forEach(([json, json_src]) => {
-                    this.showMod()
+                    this.showMod(json, json_src)
                 })
                 setTimeout(() => window.document.dispatchEvent(new CustomEvent('fapishowmods')), 1000);
             })();
         }
-        showMod(name, author, icon) {
+        showMod(json, json_src, is_loaded=true) {
             if (this.mods === undefined) return;
 
             let mod_element = document.createElement('div');
@@ -908,15 +914,23 @@
 
             let mod_icon = document.createElement('img');
             mod_icon.className = 'mod-icon';
-            mod_icon.src = icon;
+            mod_icon.src = json['icon'];
 
             let mod_name = document.createElement('div');
             mod_name.className = 'mod-name';
-            mod_name.textContent = name + ' от ' + author;
+            mod_name.textContent = json['name'] + ' от ' + json['author'];
 
             let mod_delete = document.createElement('div');
-            mod_name.className = 'mod-delete';
-            mod_name.textContent = 'Удалить';
+            mod_delete.className = 'mod-delete';
+            mod_delete.textContent = 'Удалить';
+            mod_delete.onclick = function() {
+                if (localStorage.mods === undefined) localStorage.mods = JSON.stringify([]);
+                let mods = JSON.parse(localStorage.mods);
+                if (!mods.includes(json_src)) return;
+                mods.splice(mods.indexOf(json_src), 1);
+                localStorage.mods = JSON.stringify(mods);
+                mod_element.remove();
+            }
 
             mod_header.appendChild(mod_icon);
             mod_header.appendChild(mod_name);
@@ -930,7 +944,6 @@
         constructor() {
             window.game.FAPI = this;
             this.ID_SYMBOLS = 'abcdefghijklmnopqrstuvwxyz_.'.split('');
-            this.img_sources = JSON.parse(sessionStorage.api_sources);
             this.CHUNK_SIZE = 16;
             this.CELL_SIZE = 250;
             this.MAX_TYPE = 25;

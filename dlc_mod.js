@@ -5,7 +5,7 @@ window.document.addEventListener('fapiloaded', function() {
     лгбт_подсветочка.name = ['RGB lamp','Разноцветная лампочка','Різнобарвна лампочка','Рознакаляровая лямпа'];
     лгбт_подсветочка.info = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
     лгбт_подсветочка.does = ["Does nothing.","Ничего не делает.","Нічого не робить.","Нічога не рабіць."];
-    лгбт_подсветочка.icon_url = window.game.FAPI.img_sources.rgb_lamp;
+    лгбт_подсветочка.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/rgb_lamp.png";
     лгбт_подсветочка.is_pressable = true;
     лгбт_подсветочка.update = (arrow) => {
         let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
@@ -74,7 +74,7 @@ window.document.addEventListener('fapiloaded', function() {
     purple_arrow.name = ['Purple arrow','Фиолетовая стрелка','Фіолетова стрілка','Фіялетавая стрэлка'];
     purple_arrow.info = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
     purple_arrow.does = ["Sends a signal forwards, skipping `n` cells.","Передает сигнал вперед через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
-    purple_arrow.icon_url = window.game.FAPI.img_sources.purple_arrow;
+    purple_arrow.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/purple_arrow.png";
     purple_arrow.is_pressable = true;
     purple_arrow.custom_data = [123];
     purple_arrow.update = (arrow) => {
@@ -104,7 +104,7 @@ window.document.addEventListener('fapiloaded', function() {
     purple_diagonal_arrow.name = ['Purple diagonal arrow','Фиолетовая диагональная стрелка','Фіолетова стрілка','Фіялетавая стрэлка'];
     purple_diagonal_arrow.info = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
     purple_diagonal_arrow.does = ["Sends a signal diagonally, skipping `n` cells.","Передает сигнал по диагонали через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
-    purple_diagonal_arrow.icon_url = window.game.FAPI.img_sources.purple_diagonal_arrow;
+    purple_diagonal_arrow.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/purple_diagonal_arrow.png";
     purple_diagonal_arrow.is_pressable = true;
     purple_diagonal_arrow.update = (arrow) => {
         if (arrow.signalsCount > 0) arrow.signal = 6;
@@ -135,7 +135,7 @@ window.document.addEventListener('fapiloaded', function() {
     text_block.name = ['Block of text','Блок текста','Блок текста','Блок текста'];
     text_block.info = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
     text_block.does = ["Sends a signal diagonally, skipping `n` cells.","Передает сигнал по диагонали через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
-    text_block.icon_url = window.game.FAPI.img_sources.text_block;
+    text_block.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/text_block.png";
     text_block.is_pressable = true;
     text_block.text2seq = function(text) {
         let seq = [];
