@@ -157,7 +157,7 @@ window.document.addEventListener('fapiloaded', function() {
         text_block_input.value = text_block.seq2text(arrow.custom_data);
         text_block_modal.showModal();
     };
-    text_block.custom_data = [text_block.text2seq('Пусто')];
+    text_block.custom_data = text_block.text2seq('Пусто');
 
 
     let text_block_modal = window.game.FAPI.ModalHandler.createModal();
