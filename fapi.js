@@ -948,9 +948,11 @@
             let prevKeyDownCallback = game.navigation.gamePage.playerControls.keyDownCallback;
             game.navigation.gamePage.playerControls.keyDownCallback = function(e, t) {
                 if (e === "Escape" && fapi.ModalHandler.closeAnyModal()) return;
+                if (fapi.ModalHandler.openedAnyModal()) return;
                 prevKeyDownCallback.apply(game.navigation.gamePage.playerControls, e, t);
                 // TODO: Возможность подписаться на ивент
             }
+            game.navigation.gamePage.playerControls.keyboardHandler.keyDownCallback = game.navigation.gamePage.playerControls.keyDownCallback;
             game.navigation.gamePage.playerControls.leftClickCallback = function() {
                 if (game.navigation.gamePage.playerControls.playerUI.isMenuOpen()) return;
 
@@ -1090,6 +1092,7 @@
         } catch (e) {
             await new Promise(resolve => setTimeout(resolve, 10));
         }
+        await new Promise(resolve => setTimeout(resolve, 500));
     }
     window.document.dispatchEvent(new CustomEvent('fapiloaded'));
 
