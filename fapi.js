@@ -766,7 +766,7 @@
     class ModHandler {
         constructor(FAPI) {
             this.FAPI = FAPI;
-            this.show = [];
+            this.showSrcs = [];
             (async () => {
                 while (true) {
                     this.menu_content = document.querySelector('#menu-page-content');
@@ -838,17 +838,9 @@
                 this.srcs = srcs;
                 this.reload = reload;
 
-                if (localStorage.mods !== undefined) {
-                    let mods = JSON.parse(localStorage.mods);
-                    mods.forEach((mod_src) => {
-                        let mod = document.createElement('script')
-                        mod.src = mod_src;
-                        mod.crossOrigin = 'anonymous';
-                        mod.type = 'text/javascript'
-                        document.body.appendChild(mod);
-                        this.showSrc(mod_src)
-                    });
-                }
+                this.showSrcs.forEach(([script, src]) => {
+                    this.showSrc(src);
+                })
                 setTimeout(() => window.document.dispatchEvent(new CustomEvent('fapishowmods')), 1000);
             })();
         }
@@ -910,6 +902,17 @@
             this.moddedArrowsId = [];
             this.moddedArrows = [];
             this.ModHandler = new ModHandler(this);
+            if (localStorage.mods !== undefined) {
+                let mods = JSON.parse(localStorage.mods);
+                mods.forEach((mod_src) => {
+                    let mod = document.createElement('script')
+                    mod.src = mod_src;
+                    mod.crossOrigin = 'anonymous';
+                    mod.type = 'text/javascript'
+                    document.body.appendChild(mod);
+                    this.ModHandler.showSrcs.push([mod, mod_src]);
+                });
+            }
         }
 
         init() {
