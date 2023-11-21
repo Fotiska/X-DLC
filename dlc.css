@@ -1,0 +1,115 @@
+:root {
+    --background: #2d51a5 !important;
+    --light-blue: #375fbb !important;
+    --blue: #2a4a95 !important;
+    --dark-blue: #244389 !important;
+}
+
+.ui-new-item, .ui-saved-item {
+    background-color: var(--light-blue) !important;
+}
+
+#menu-page-side-bar {
+    flex: unset !important;
+}
+
+#menu-page-content {
+    background-color: var(--background) !important;
+}
+
+.side-menu-element {
+    padding: 0 10px;
+}
+
+body {
+    background-color: var(--background) !important;
+}
+
+div.ui-inventory-items {
+    background-color: #46f !important;
+    border-radius: 15px !important;
+    padding: 10px !important;
+}
+
+dialog.ui-mod-modal {
+    padding: 10px;
+    border-radius: 15px;
+    background-color: rgb(68, 102, 255);
+    border: none;
+    outline: none;
+    cursor: default;
+}
+
+dialog.ui-mod-modal::backdrop {
+    background-color: rgba(0, 0, 0, 0.25);
+}
+
+dialog.ui-mod-modal > div.ui-mod-pair > select.ui-mod-select,
+dialog.ui-mod-modal > div.ui-mod-pair > input.ui-mod-input {
+    border: none;
+    border-radius: 10px;
+    padding: 5px;
+}
+
+dialog.ui-mod-modal > div.ui-mod-pair {
+    display: flex;
+    column-gap: 25px;
+}
+
+dialog.ui-mod-modal > div.ui-mod-pair > div.ui-mod-name {
+    font-family: Nunito;
+}
+
+.page-content {
+    display: flex;
+    width: 100vw;
+}
+
+.side-element-mods {
+    background-color: var(--blue);
+    width: 600px;
+    z-index: 9999;
+}
+
+.side-element-mods-title {
+    font-family: Nunito;
+    font-size: 40px;
+    text-align: center;
+    padding: 20px;
+}
+
+.side-element-mods-title:after {
+    content: '';
+    width: 100%;
+    display: block;
+    height: 3px;
+    background-color: black;
+    bottom: -20px;
+}
+
+.mod {
+    margin: 10px;
+    border-radius: 14px;
+    padding: 15px;
+    background-color: var(--dark-blue);
+}
+
+.mod-header {
+    display: flex;
+}
+
+.mod-icon {
+    width: 50px;
+    height: 50px;
+    padding: 10px;
+    background-color: var(--light-blue);
+    border-radius: 10px;
+}
+
+.mod-name {
+    font-family: Nunito;
+    font-size: 20px;
+    padding: 10px;
+    line-height: 50px;
+    margin-left: 10px;
+}

@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "X DLC",
+  "version": "1.0",
+  "description": "DLC Для стрелочек...",
+  "action": {
+    "default_icon": "images/icon128.png",
+    "default_title": "X DLC",
+    "default_popup": "index.html"
+  },
+  "icons": {
+    "128": "images/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://logic-arrows.io/*"],
+      "js": ["main.js"],
+      "css": ["dlc.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "host_permissions": [
+    "https://logic-arrows.io/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["fapi.js", "dlc_mod.js", "modified_bundle.js", "images/*.png"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'",
+    "web_accessible_resources": "script-src 'self'; object-src 'self'"
+  }
+}
