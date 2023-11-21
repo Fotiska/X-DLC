@@ -12,26 +12,65 @@ window.document.addEventListener('fapiloaded', function() {
     лгбт_подсветочка.icon_url = window.game.FAPI.img_sources.rgb_lamp;
     лгбт_подсветочка.is_pressable = true;
     лгбт_подсветочка.update = (arrow) => {
-        if (arrow.custom_data[0] === 0) arrow.signal = arrow.signalsCount;
-        else if (arrow.signalsCount > 0) arrow.signal = arrow.custom_data;
+        let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
+
+        if (color === 0) arrow.signal = arrow.signalsCount;
+        else if (activation === 0 && arrow.signalsCount > 0) arrow.signal = color;
+        else if (activation === 1) arrow.signal = color;
+        else if (activation === 2 && arrow.signalsCount === 0) arrow.signal = color;
         else arrow.signal = 0;
     };
-    лгбт_подсветочка.press = (arrow) => {
-        rgb_modal.showModal();
-        rgb_select.value = colors[arrow.custom_data[0]]
-        rgb_select.onchange = () => arrow.custom_data = [colors.indexOf(rgb_select.value)];
+    лгбт_подсветочка.transmit = (arrow, chunk, x, y) => {
+        if (arrow.signal !== 0) {
+            let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
+            if (transmit === 1) window.game.FAPI.SignalUpdater.updateCount(window.game.FAPI.SignalUpdater.adv_getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
+        }
     };
-    лгбт_подсветочка.custom_data = [0];
-
+    лгбт_подсветочка.gdata = (arrow) => {
+        let transmit = arrow.custom_data[0] & 1;
+        let activation = (arrow.custom_data[0] >> 3) & 0b11;
+        let color = (arrow.custom_data[0] >> 5) & 0b111;
+        return [color, activation, transmit];
+    }
+    лгбт_подсветочка.sdata = (color, activation, transmit) => {
+        let data = (color << 5) | (activation << 3) | transmit;
+        return [data];
+    }
+    лгбт_подсветочка.press = (arrow, is_shift) => {
+        rgb_modal.showModal();
+        let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
+        rgb_select.value = colors[color];
+        rgb_select.onchange = () => {
+            let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
+            color = colors.indexOf(rgb_select.value);
+            arrow.custom_data = лгбт_подсветочка.sdata(color, activation, transmit);
+        }
+        activation_select.value = activations[activation];
+        activation_select.onchange = () => {
+            let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
+            activation = activations.indexOf(activation_select.value);
+            arrow.custom_data = лгбт_подсветочка.sdata(color, activation, transmit);
+        }
+        transmit_select.value = transmits[transmit];
+        transmit_select.onchange = () => {
+            let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
+            transmit = transmits.indexOf(transmit_select.value);
+            arrow.custom_data = лгбт_подсветочка.sdata(color, activation, transmit);
+        }
+    };
+    лгбт_подсветочка.custom_data = [0b11110];
 
     colors = ['Радужный', 'Красный', 'Синий', 'Жёлтый', 'Зелёный', 'Оранжевый', 'Фиолетовый', 'Чёрный'];
+    activations = ['При сигнале', 'Всегда ( можно блокировать )', 'Когда нету сигнала'];
+    transmits = ['Нет', 'Следующей стрелочке'];
+
     let rgb_modal = window.game.FAPI.ModalHandler.createModal();
     let rgb_select = window.game.FAPI.ModalHandler.createSelect(rgb_modal, 'Цвет');
-    colors.forEach((color) => {
-        let rgb_option = window.game.FAPI.ModalHandler.createOption(rgb_select);
-        rgb_option.value = color;
-        rgb_option.text = color;
-    })
+    window.game.FAPI.ModalHandler.createOptions(rgb_select, colors);
+    let activation_select = window.game.FAPI.ModalHandler.createSelect(rgb_modal, 'Активация');
+    window.game.FAPI.ModalHandler.createOptions(activation_select, activations);
+    let transmit_select = window.game.FAPI.ModalHandler.createSelect(rgb_modal, 'Передача');
+    window.game.FAPI.ModalHandler.createOptions(transmit_select, transmits);
     // endregion
     // region ФиолетоваяСтрелка
     purple_arrow = new window.game.FAPI.FModArrowType();

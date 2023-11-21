@@ -40,6 +40,9 @@ dialog.ui-mod-modal {
     border: none;
     outline: none;
     cursor: default;
+    display: flex;
+    row-gap: 10px;
+    flex-direction: column;
 }
 
 dialog.ui-mod-modal::backdrop {
@@ -60,6 +63,7 @@ dialog.ui-mod-modal > div.ui-mod-pair {
 
 dialog.ui-mod-modal > div.ui-mod-pair > div.ui-mod-name {
     font-family: Nunito;
+    width: 140px;
 }
 
 .page-content {

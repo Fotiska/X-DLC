@@ -777,6 +777,17 @@
             select.appendChild(option)
             return option;
         }
+
+        createOptions(select, values) {
+            let options = [];
+            values.forEach((value) => {
+                let option = this.createOption(select);
+                option.value = value;
+                option.text = value;
+                options.push(option);
+            });
+            return options;
+        }
     }
     class ModHandler {
         constructor(FAPI) {
@@ -954,6 +965,7 @@
             };
             game.navigation.gamePage.playerControls.leftClickCallback = function() {
                 if (game.navigation.gamePage.playerControls.playerUI.isMenuOpen()) return;
+                else if (fapi.ModalHandler.openedAnyModal()) return;
 
                 prevLeftClickCallback.apply(game.navigation.gamePage.playerControls);
                 const arrow = game.navigation.gamePage.playerControls.getArrowByMousePosition();
