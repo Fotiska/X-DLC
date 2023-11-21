@@ -1,0 +1,7 @@
+{
+  "icon": "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/icon128.png",
+  "name": "DLC Core",
+  "author": "Фотис",
+  "id": "fotis.dlc_core",
+  "script": "https://raw.githubusercontent.com/Fotiska/X-DLC/main/dlc_mod.js"
+}

@@ -312,7 +312,7 @@
                                 break;
                             default:
                                 let marrow = this.FAPI.getArrowByType(arrow.type);
-                                if (marrow !== undefined) marrow.update(arrow);
+                                if (marrow !== undefined) marrow.update(arrow, chunk, x, y);
                                 break;
                         }
                         arrow.signalsCount = 0;
@@ -818,7 +818,7 @@
     class ModHandler {
         constructor(FAPI) {
             this.FAPI = FAPI;
-            this.showSrcs = [];
+            this.showMods = [];
             (async () => {
                 while (true) {
                     this.menu_content = document.querySelector('#menu-page-content');
@@ -853,9 +853,10 @@
                 let load = document.createElement('div');
                 load.className = 'side-element-mods-load';
                 load.textContent = 'Загрузить';
-                let modHandler = this;
 
                 load.onclick = () => {
+                    if (!mod_input.value.includes('githubusercontent')) return;
+
                     mod_input.value = mod_input.value.replaceAll('githubusercontent', 'githack');
 
                     if (localStorage.mods === undefined) localStorage.mods = JSON.stringify([]);
@@ -890,28 +891,11 @@
                 this.srcs = srcs;
                 this.reload = reload;
 
-                this.showSrcs.forEach(([script, src]) => {
-                    this.showSrc(src);
+                this.showMods.forEach(([json, json_src]) => {
+                    this.showMod()
                 })
                 setTimeout(() => window.document.dispatchEvent(new CustomEvent('fapishowmods')), 1000);
             })();
-        }
-        showSrc(src) {
-            let del = document.createElement('div');
-            del.className = 'mod-src-delete';
-            del.textContent = src;
-            let modHandler = this;
-            del.onclick = function() {
-                if (localStorage.mods === undefined) localStorage.mods = JSON.stringify([]);
-                let mods = JSON.parse(localStorage.mods);
-                if (!mods.includes(src)) return;
-
-                mods.splice(mods.indexOf(src), 1);
-                localStorage.mods = JSON.stringify(mods);
-                modHandler.reload.style.visibility = 'visible';
-                del.remove();
-            }
-            this.srcs.appendChild(del);
         }
         showMod(name, author, icon) {
             if (this.mods === undefined) return;
@@ -930,9 +914,14 @@
             mod_name.className = 'mod-name';
             mod_name.textContent = name + ' от ' + author;
 
+            let mod_delete = document.createElement('div');
+            mod_name.className = 'mod-delete';
+            mod_name.textContent = 'Удалить';
+
             mod_header.appendChild(mod_icon);
             mod_header.appendChild(mod_name);
             mod_element.appendChild(mod_header);
+            mod_element.appendChild(mod_delete);
             this.mods.appendChild(mod_element);
         }
     }
@@ -950,20 +939,23 @@
             this.SignalUpdater = new SignalUpdater(this);
             this.ModalHandler = new ModalHandler(this);
             this.mods = [];
-            this.moddedArrowsType = [];
-            this.moddedArrowsId = [];
             this.moddedArrows = [];
             this.ModHandler = new ModHandler(this);
+        }
+
+        async fetch() {
             if (localStorage.mods !== undefined) {
                 let mods = JSON.parse(localStorage.mods);
-                mods.forEach((mod_src) => {
+                for (const mod_json of mods) {
+                    let fetch_json = await fetch(mod_json);
+                    let json = await fetch_json.json();
+                    let fetch_script = await fetch(json['script'])
+                    let script = await fetch_script.text();
                     let mod = document.createElement('script')
-                    mod.src = mod_src;
-                    mod.crossOrigin = 'anonymous';
-                    mod.type = 'text/javascript'
+                    mod.innerHTML = script;
                     document.body.appendChild(mod);
-                    this.ModHandler.showSrcs.push([mod, mod_src]);
-                });
+                    this.ModHandler.showMods.push([json, mod_json]);
+                }
             }
         }
 
@@ -1123,7 +1115,8 @@
         }
     }
     console.log('FAPI Loaded');
-    new FAPI();
+    let fapi = new FAPI();
+    await fapi.fetch();
 
     while (true) {
         let x;
@@ -1134,9 +1127,8 @@
         } catch (e) {
             await new Promise(resolve => setTimeout(resolve, 10));
         }
-        await new Promise(resolve => setTimeout(resolve, 500));
     }
+    await new Promise(resolve => setTimeout(resolve, 500));
     window.document.dispatchEvent(new CustomEvent('fapiloaded'));
-
     window.game.FAPI.init();
 })();

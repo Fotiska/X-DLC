@@ -1,7 +1,3 @@
-window.document.addEventListener('fapishowmods', function() {
-    window.game.FAPI.ModHandler.showMod('DLC Core', 'Фотис', window.game.FAPI.img_sources.icon);
-});
-
 window.document.addEventListener('fapiloaded', function() {
     // regionЛГБТлампочка
     let лгбт_подсветочка = new window.game.FAPI.FModArrowType();
