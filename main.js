@@ -5,6 +5,7 @@
             'rgb_lamp': chrome.runtime.getURL('images/rgb_lamp.png'),
             'purple_arrow': chrome.runtime.getURL('images/purple_arrow.png'),
             'purple_diagonal_arrow': chrome.runtime.getURL('images/purple_diagonal_arrow.png'),
+            'text_block': chrome.runtime.getURL('images/text_block.png'),
         });
         window.document.close();
         window.document.open();

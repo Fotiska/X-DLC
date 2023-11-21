@@ -744,6 +744,7 @@
                 if (modal !== undefined && modal.open) {
                     modal.close();
                     closed = true;
+                    window.document.activeElement.blur();
                 }
             });
             return closed;
@@ -763,6 +764,21 @@
             input.min = min;
             input.max = max;
             input.classList.add('ui-mod-input');
+            pair.appendChild(input);
+            return input;
+        }
+
+        createTextInput(modal, sname) {
+            let pair = document.createElement('div');
+            pair.classList.add('ui-mod-pair');
+            modal.appendChild(pair);
+            let name = document.createElement('div');
+            name.classList.add('ui-mod-name');
+            name.textContent = sname;
+            pair.appendChild(name);
+            let input = document.createElement('textarea');
+            input.placeholder = `Текст`
+            input.classList.add('ui-mod-textarea');
             pair.appendChild(input);
             return input;
         }

@@ -174,3 +174,16 @@ dialog.ui-mod-modal > div.ui-mod-pair > div.ui-mod-name {
     padding: 3px;
     border-radius: 8px;
 }
+
+.ui-mod-textarea {
+    border: none;
+    border-radius: 10px;
+    padding: 5px;
+    margin: 10px;
+    background-color: var(--light-blue);
+    width: calc(100% - 20px);
+    height: 140px;
+    font-family: Nunito;
+    font-size: 20px;
+    resize: unset;
+}

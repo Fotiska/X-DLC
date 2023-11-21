@@ -4,7 +4,7 @@ window.document.addEventListener('fapishowmods', function() {
 
 window.document.addEventListener('fapiloaded', function() {
     // regionЛГБТлампочка
-    лгбт_подсветочка = new window.game.FAPI.FModArrowType();
+    let лгбт_подсветочка = new window.game.FAPI.FModArrowType();
     лгбт_подсветочка.id = 0;
     лгбт_подсветочка.name = ['RGB lamp','Разноцветная лампочка','Різнобарвна лампочка','Рознакаляровая лямпа'];
     лгбт_подсветочка.info = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
@@ -73,7 +73,7 @@ window.document.addEventListener('fapiloaded', function() {
     window.game.FAPI.ModalHandler.createOptions(transmit_select, transmits);
     // endregion
     // region ФиолетоваяСтрелка
-    purple_arrow = new window.game.FAPI.FModArrowType();
+    let purple_arrow = new window.game.FAPI.FModArrowType();
     purple_arrow.id = 1;
     purple_arrow.name = ['Purple arrow','Фиолетовая стрелка','Фіолетова стрілка','Фіялетавая стрэлка'];
     purple_arrow.info = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
@@ -103,7 +103,7 @@ window.document.addEventListener('fapiloaded', function() {
     let purple_input = window.game.FAPI.ModalHandler.createInput(purple_modal, 'Дистанция');
     // endregion
     // region ФиолетоваяДиагональнаяСтрелка
-    purple_diagonal_arrow = new window.game.FAPI.FModArrowType();
+    let purple_diagonal_arrow = new window.game.FAPI.FModArrowType();
     purple_diagonal_arrow.id = 2;
     purple_diagonal_arrow.name = ['Purple diagonal arrow','Фиолетовая диагональная стрелка','Фіолетова стрілка','Фіялетавая стрэлка'];
     purple_diagonal_arrow.info = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
@@ -132,6 +132,41 @@ window.document.addEventListener('fapiloaded', function() {
     let purple_diagonal_modal = window.game.FAPI.ModalHandler.createModal();
     let purple_diagonal_input = window.game.FAPI.ModalHandler.createInput(purple_diagonal_modal, 'Дистанция');
     // endregion
+    // region БлокТекста
+    let symbols = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!?\"\`\'#()[].,_- \n'.split('');
+    let text_block = new window.game.FAPI.FModArrowType();
+    text_block.id = 3;
+    text_block.name = ['Block of text','Блок текста','Блок текста','Блок текста'];
+    text_block.info = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
+    text_block.does = ["Sends a signal diagonally, skipping `n` cells.","Передает сигнал по диагонали через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
+    text_block.icon_url = window.game.FAPI.img_sources.text_block;
+    text_block.is_pressable = true;
+    text_block.text2seq = function(text) {
+        let seq = [];
+        text.split('').forEach((symbol) => {
+            let index = symbols.indexOf(symbol);
+            if (index !== -1) seq.push(index);
+        });
+        return seq;
+    }
+    text_block.seq2text = function(seq) {
+        let text = '';
+        seq.forEach((val) => {
+            text += symbols[val];
+        });
+        return text;
+    }
+    text_block.press = (arrow) => {
+        text_block_input.onchange = (e) => arrow.custom_data = text_block.text2seq(text_block_input.value);
+        text_block_input.value = text_block.seq2text(arrow.custom_data);
+        text_block_modal.showModal();
+    };
+    text_block.custom_data = [text_block.text2seq('Пусто')];
+
+
+    let text_block_modal = window.game.FAPI.ModalHandler.createModal();
+    let text_block_input = window.game.FAPI.ModalHandler.createTextInput(text_block_modal, 'Текст');
+    // endregion
 
     // TODO: Накопительная стрелка
     // TODO: Рандомизатор в 2 направления
@@ -139,9 +174,10 @@ window.document.addEventListener('fapiloaded', function() {
     game.navigation.gamePage.playerUI.toolbarController.inventory.element.appendChild(rgb_modal);
     game.navigation.gamePage.playerUI.toolbarController.inventory.element.appendChild(purple_modal);
     game.navigation.gamePage.playerUI.toolbarController.inventory.element.appendChild(purple_diagonal_modal);
+    game.navigation.gamePage.playerUI.toolbarController.inventory.element.appendChild(text_block_modal);
 
     window.game.FAPI.registerMod('DLC Core', 'fotis.dlc_core', 'Фотис', 'API для мододелов', (mod) => {
-        window.game.FAPI.registerArrows([лгбт_подсветочка, purple_arrow, purple_diagonal_arrow], mod);
+        window.game.FAPI.registerArrows([лгбт_подсветочка, purple_arrow, purple_diagonal_arrow, text_block], mod);
         console.log('`DLC Core` loaded!');
     });
 });
