@@ -1,6 +1,6 @@
-// window.document.addEventListener('fapishowmods', function() {
-//     window.game.FAPI.ModHandler.showMod('DLC Core', 'Фотис', window.game.FAPI.img_sources.icon);
-// });
+window.document.addEventListener('fapishowmods', function() {
+    window.game.FAPI.ModHandler.showMod('DLC Core', 'Фотис', window.game.FAPI.img_sources.icon);
+});
 
 window.document.addEventListener('fapiloaded', function() {
     // regionЛГБТлампочка
@@ -112,9 +112,9 @@ window.document.addEventListener('fapiloaded', function() {
     // window.DLC_CORE.purple_modal = purple_modal;
     // window.DLC_CORE.purple_diagonal_modal = purple_diagonal_modal;
 
-    // window.game.FAPI.registerMod('DLC Core', 'fotis.dlc_core', 'Фотис', 'API для мододелов', (mod) => {
-    //     // window.DLC_CORE.mod = mod;
-    //     window.game.FAPI.registerArrows([лгбт_подсветочка, purple_arrow, purple_diagonal_arrow], mod);
-    //     console.log('`DLC Core` loaded!');
-    // });
+    window.game.FAPI.registerMod('DLC Core', 'fotis.dlc_core', 'Фотис', 'API для мододелов', (mod) => {
+        // window.DLC_CORE.mod = mod;
+        window.game.FAPI.registerArrows([лгбт_подсветочка, purple_arrow, purple_diagonal_arrow], mod);
+        console.log('`DLC Core` loaded!');
+    });
 });

@@ -630,13 +630,12 @@
 
             if (unknownMods.length !== 0) {
                 let text = 'Невозможно загрузить карту, отстутствуют данные моды:\n';
-                console.log(unknownMods)
                 unknownMods.forEach((mod) => {
                     text += mod + '\n';
                 });
                 alert(text);
-                window.open('https://logic-arrows.io/maps');
-                window.close();
+                // window.open('https://logic-arrows.io/maps');
+                // window.close();
                 throw new Error('Unknown mods');
             }
 
@@ -797,7 +796,7 @@
 
                 let mod_input = document.createElement('input');
                 mod_input.className = 'side-element-mods-load-input';
-                mod_input.placeholder = 'Ссылка на мод ( github )';
+                mod_input.placeholder = 'Ссылка на мод ( githack )';
 
                 let load = document.createElement('div');
                 load.className = 'side-element-mods-load';
@@ -805,6 +804,8 @@
                 let modHandler = this;
 
                 load.onclick = () => {
+                    mod_input.value = mod_input.value.replaceAll('githubusercontent', 'githack');
+
                     if (localStorage.mods === undefined) localStorage.mods = JSON.stringify([]);
                     let mods = JSON.parse(localStorage.mods);
                     if (mods.includes(mod_input.value)) return;
