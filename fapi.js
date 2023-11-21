@@ -945,14 +945,13 @@
 
             let prevControls = game.navigation.gamePage.playerControls.update;
             let prevLeftClickCallback = game.navigation.gamePage.playerControls.leftClickCallback;
-            let prevKeyDownCallback = game.navigation.gamePage.playerControls.keyDownCallback;
-            game.navigation.gamePage.playerControls.keyDownCallback = function(e, t) {
-                if (e === "Escape" && fapi.ModalHandler.closeAnyModal()) return;
-                if (fapi.ModalHandler.openedAnyModal()) return;
-                prevKeyDownCallback.apply(game.navigation.gamePage.playerControls, e, t);
+            let prevKeyDownCallback = game.navigation.gamePage.playerControls.keyboardHandler.keyDownCallback;
+            game.navigation.gamePage.playerControls.keyboardHandler.keyDownCallback = function(e, t) {
+                if (e === "Escape" && fapi.ModalHandler.closeAnyModal());
+                else if (fapi.ModalHandler.openedAnyModal());
+                else prevKeyDownCallback(e, t);
                 // TODO: Возможность подписаться на ивент
-            }
-            game.navigation.gamePage.playerControls.keyboardHandler.keyDownCallback = game.navigation.gamePage.playerControls.keyDownCallback;
+            };
             game.navigation.gamePage.playerControls.leftClickCallback = function() {
                 if (game.navigation.gamePage.playerControls.playerUI.isMenuOpen()) return;
 
@@ -970,6 +969,10 @@
             }
             game.navigation.gamePage.playerControls.mouseHandler.leftClickCallback = game.navigation.gamePage.playerControls.leftClickCallback;
             game.navigation.gamePage.playerControls.update = function() {
+                if (game.navigation.gamePage.playerControls.keyboardHandler.getKeyPressed('Escape') && fapi.ModalHandler.closeAnyModal()) return;
+                else if (fapi.ModalHandler.openedAnyModal()) return;
+                // TODO: Возможность подписаться на ивент
+
                 prevControls.apply(game.navigation.gamePage.playerControls);
                 const arrow = game.navigation.gamePage.playerControls.getArrowByMousePosition();
                 if (arrow !== undefined && arrow.type > 24) {
