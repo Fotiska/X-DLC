@@ -804,14 +804,16 @@
             return input;
         }
 
-        createTextInput(modal, sname) {
+        createTextInput(modal, sname, showPrefix=false) {
             let pair = document.createElement('div');
             pair.classList.add('ui-mod-pair');
             modal.appendChild(pair);
-            let name = document.createElement('div');
-            name.classList.add('ui-mod-name');
-            name.textContent = sname;
-            pair.appendChild(name);
+            if (showPrefix) {
+                let name = document.createElement('div');
+                name.classList.add('ui-mod-name');
+                name.textContent = sname;
+                pair.appendChild(name);
+            }
             let input = document.createElement('textarea');
             input.placeholder = `Текст`
             input.classList.add('ui-mod-textarea');
@@ -958,8 +960,10 @@
 
             let mod_delete = document.createElement('div');
             mod_delete.className = 'mod-delete';
-            mod_delete.textContent = 'Удалить';
-            mod_delete.onclick = function() {
+            let mod_delete_text = document.createElement('div');
+            mod_delete_text.className = 'mod-delete-text';
+            mod_delete_text.textContent = 'Удалить';
+            mod_delete_text.onclick = function() {
                 if (localStorage.mods === undefined) localStorage.mods = JSON.stringify([]);
                 let mods = JSON.parse(localStorage.mods);
                 if (!mods.includes(json_src)) return;
@@ -967,6 +971,7 @@
                 localStorage.mods = JSON.stringify(mods);
                 mod_element.remove();
             }
+            mod_delete.appendChild(mod_delete_text);
 
             mod_header.appendChild(mod_icon);
             mod_header.appendChild(mod_name);
@@ -1171,7 +1176,6 @@
     console.log('FAPI Loaded');
     let fapi = new FAPI();
     await fapi.fetch();
-
     while (true) {
         let x;
         try {
@@ -1182,7 +1186,6 @@
             await new Promise(resolve => setTimeout(resolve, 10));
         }
     }
-    await new Promise(resolve => setTimeout(resolve, 500));
     window.document.dispatchEvent(new CustomEvent('fapiloaded'));
     window.game.FAPI.init();
 })();

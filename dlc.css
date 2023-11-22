@@ -187,3 +187,26 @@ dialog.ui-mod-modal > div.ui-mod-pair > div.ui-mod-name {
     font-size: 20px;
     resize: unset;
 }
+
+* {
+    -moz-user-select: -moz-none;
+    -khtml-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.mod-delete {
+    display: flex;
+    justify-content: right;
+}
+
+.mod-delete-text {
+    background-color: var(--light-red);
+    width: 75px;
+    border-radius: 10px;
+    padding: 6px;
+    text-align: center;
+    font-family: Nunito;
+    cursor: pointer;
+}
