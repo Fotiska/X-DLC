@@ -57,7 +57,7 @@ window.document.addEventListener('fapiloaded', function() {
     лгбт_подсветочка.custom_data = [128];
 
     colors = ['Радужный', 'Красный', 'Синий', 'Жёлтый', 'Зелёный', 'Оранжевый', 'Фиолетовый', 'Чёрный'];
-    activations = ['При сигнале', 'Всегда ( можно блокировать )', 'Когда нету сигнала'];
+    activations = ['При сигнале', 'Всегда ( можно блокировать )', 'При отсутствии сигнала'];
     transmits = ['Нет', 'Следующей стрелочке'];
 
     let rgb_modal = window.game.FAPI.ModalHandler.createModal();

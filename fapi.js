@@ -143,15 +143,22 @@
          * @param {Object.<string,any>} gameMap Карта
          * @return {void} Ничего не возвращает
          */
-        update = function(gameMap) {
+        update(gameMap) {
+            const allArrows = [];
+            const specificArrows = [];
+
             gameMap.chunks.forEach((chunk) => {
+                chunk.arrows.forEach((arrow) => {
+
+                });
                 for (let x = 0; x < this.FAPI.CHUNK_SIZE; x++) {
                     for (let y = 0; y < this.FAPI.CHUNK_SIZE; y++) {
                         const arrow = chunk.getArrow(x, y);
                         this.toLast(arrow);
+                        allArrows.push([chunk, arrow, x, y]);
                         switch (arrow.type) {
                             case 0:
-                                break;
+                                continue;
                             case 1: // Стрелочка
                             case 4: // Стрелочка задержки
                             case 5: // Передатчик
@@ -229,113 +236,104 @@
                                     this.updateCount(this.adv_getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, -1));
                                 }
                                 break;
+                            case 23: // Стрелочка из уровня #2
+                            case 3: // Блокер
+                                // specificArrows.push([chunk, arrow, x, y])
+                                break;
                             default:
                                 let marrow = this.FAPI.getArrowByType(arrow.type);
                                 if (marrow !== undefined) marrow.transmit(arrow, chunk, x, y);
+                                // specificArrows.push([chunk, arrow, x, y])
                                 break;
                         }
+                        specificArrows.push([chunk, arrow, x, y])
+                        // allArrows.push([chunk, arrow, x, y]);
                     }
                 }
             });
-            gameMap.chunks.forEach((chunk) => {
-                for (let x = 0; x < this.FAPI.CHUNK_SIZE; x++) {
-                    for (let y = 0; y < this.FAPI.CHUNK_SIZE; y++) {
-                        const arrow = chunk.getArrow(x, y);
-                        switch (arrow.type) {
-                            case 0:
-                                break;
-                            case 1:
-                            case 3:
-                            case 6:
-                            case 7:
-                            case 8:
-                            case 23:
-                                arrow.signal = arrow.signalsCount > 0 ? 1 : 0;
-                                break;
-                            case 2:
-                                arrow.signal = 1;
-                                break;
-                            case 4:
-                                if (arrow.signal === 2) arrow.signal = 1;
-                                else if (arrow.signal === 0 && arrow.signalsCount > 0) arrow.signal = 2;
-                                else if (arrow.signal === 1 && arrow.signalsCount > 0) arrow.signal = 1;
-                                else arrow.signal = 0;
-                                break;
-                            case 5:
-                                arrow.signal = 0;
-                                const backward_arrow = this.adv_getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 1);
-                                if (backward_arrow !== undefined) arrow.signal = backward_arrow.lastSignal !== 0 ? 1 : 0;
-                                break;
-                            case 9:
-                                if (arrow.signal === 0) arrow.signal = 1;
-                                else if (arrow.signal === 1) arrow.signal = 2;
-                                break;
-                            case 10:
-                            case 11:
-                            case 12:
-                            case 13:
-                            case 14:
-                                arrow.signal = arrow.signalsCount > 0 ? 2 : 0;
-                                break;
-                            case 15:
-                                arrow.signal = arrow.signalsCount > 0 ? 0 : 3;
-                                break;
-                            case 16:
-                                arrow.signal = arrow.signalsCount > 1 ? 3 : 0;
-                                break;
-                            case 17:
-                                arrow.signal = arrow.signalsCount % 2 === 1 ? 3 : 0;
-                                break;
-                            case 18:
-                                if (arrow.signalsCount > 1) arrow.signal = 3;
-                                else if (arrow.signalsCount === 1) arrow.signal = 0;
-                                break;
-                            case 19:
-                                if (arrow.signalsCount > 0) arrow.signal = arrow.signal === 3 ? 0 : 3;
-                                break;
-                            case 20:
-                                arrow.signal = (arrow.signalsCount > 0 && Math.random() < 0.5) ? 5 : 0;
-                                break;
-                            case 21:
-                                arrow.signal = 0;
-                                break;
-                            case 22:
-                                arrow.signal = arrow.signalsCount > 0 ? 1 : 0;
-                                const n = chunk.getLevelArrow(x, y);
-                                if (n !== null) n.update();
-                                break;
-                            case 24:
-                                arrow.signal = arrow.signalsCount > 0 ? 5 : 0;
-                                break;
-                            default:
-                                let marrow = this.FAPI.getArrowByType(arrow.type);
-                                if (marrow !== undefined) marrow.update(arrow, chunk, x, y);
-                                break;
-                        }
-                        arrow.signalsCount = 0;
-                    }
+            allArrows.forEach(([chunk, arrow, x, y]) => {
+                switch (arrow.type) {
+                    case 1:
+                    case 3:
+                    case 6:
+                    case 7:
+                    case 8:
+                    case 23:
+                        arrow.signal = arrow.signalsCount > 0 ? 1 : 0;
+                        break;
+                    case 2:
+                        arrow.signal = 1;
+                        break;
+                    case 4:
+                        if (arrow.signal === 2) arrow.signal = 1;
+                        else if (arrow.signal === 0 && arrow.signalsCount > 0) arrow.signal = 2;
+                        else if (arrow.signal === 1 && arrow.signalsCount > 0) arrow.signal = 1;
+                        else arrow.signal = 0;
+                        break;
+                    case 5:
+                        arrow.signal = 0;
+                        const backward_arrow = this.adv_getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 1);
+                        if (backward_arrow !== undefined) arrow.signal = backward_arrow.lastSignal !== 0 ? 1 : 0;
+                        break;
+                    case 9:
+                        if (arrow.signal === 0) arrow.signal = 1;
+                        else if (arrow.signal === 1) arrow.signal = 2;
+                        break;
+                    case 10:
+                    case 11:
+                    case 12:
+                    case 13:
+                    case 14:
+                        arrow.signal = arrow.signalsCount > 0 ? 2 : 0;
+                        break;
+                    case 15:
+                        arrow.signal = arrow.signalsCount > 0 ? 0 : 3;
+                        break;
+                    case 16:
+                        arrow.signal = arrow.signalsCount > 1 ? 3 : 0;
+                        break;
+                    case 17:
+                        arrow.signal = arrow.signalsCount % 2 === 1 ? 3 : 0;
+                        break;
+                    case 18:
+                        if (arrow.signalsCount > 1) arrow.signal = 3;
+                        else if (arrow.signalsCount === 1) arrow.signal = 0;
+                        break;
+                    case 19:
+                        if (arrow.signalsCount > 0) arrow.signal = arrow.signal === 3 ? 0 : 3;
+                        break;
+                    case 20:
+                        arrow.signal = (arrow.signalsCount > 0 && Math.random() < 0.5) ? 5 : 0;
+                        break;
+                    case 21:
+                        arrow.signal = 0;
+                        break;
+                    case 22:
+                        arrow.signal = arrow.signalsCount > 0 ? 1 : 0;
+                        const n = chunk.getLevelArrow(x, y);
+                        if (n !== null) n.update();
+                        break;
+                    case 24:
+                        arrow.signal = arrow.signalsCount > 0 ? 5 : 0;
+                        break;
+                    default:
+                        let marrow = this.FAPI.getArrowByType(arrow.type);
+                        if (marrow !== undefined) marrow.update(arrow, chunk, x, y);
+                        break;
+                }
+                arrow.signalsCount = 0;
+            });
+            specificArrows.forEach(([chunk, arrow, x, y]) => {
+                if (arrow.type === 3 && arrow.lastSignal === 1)
+                    this.blockSignal(this.adv_getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped));
+                else if (arrow.type > 24) {
+                    let marrow = this.FAPI.getArrowByType(arrow.type);
+                    if (marrow !== undefined) marrow.block(arrow, chunk, x, y);
                 }
             });
-            gameMap.chunks.forEach((chunk) => {
-                for (let x = 0; x < this.FAPI.CHUNK_SIZE; x++) {
-                    for (let y = 0; y < this.FAPI.CHUNK_SIZE; y++) {
-                        const arrow = chunk.getArrow(x, y);
-                        if (arrow.type === 3 && arrow.lastSignal === 1)
-                            this.blockSignal(this.adv_getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped));
-                        else if (arrow.type > 24) {
-                            let marrow = this.FAPI.getArrowByType(arrow.type);
-                            if (marrow !== undefined) marrow.block(arrow, chunk, x, y);
-                        }
-                    }
-                }
-            });
-            gameMap.chunks.forEach((chunk) => {
-                for (let x = 0; x < this.FAPI.CHUNK_SIZE; x++) {
-                    for (let y = 0; y < this.FAPI.CHUNK_SIZE; y++) {
-                        const arrow = chunk.getArrow(x, y);
-                        if (arrow.type === 23) chunk.update();
-                    }
-                }
+            if (!this.FAPI.experimental.updateLevelArrow) return;
+            specificArrows.forEach(([chunk, arrow, x, y]) => {
+                if (arrow.type === 23) chunk.update();
             });
         }
     }
@@ -995,6 +993,9 @@
             this.mods = [];
             this.moddedArrows = [];
             this.ModHandler = new ModHandler(this);
+            this.experimental = {}
+            this.experimental.skipDraws = 0;
+            this.experimental.updateLevelArrow = true;
         }
 
         async fetch() {
@@ -1031,7 +1032,12 @@
                     if (marrow !== undefined) this.image.src = marrow.icon_url;
                 }
             }
-            game.ChunkUpdates.update = (gameMap) => {this.SignalUpdater.update(gameMap)};
+            game.ChunkUpdates.update = function(gameMap) {
+                fapi.SignalUpdater.update(gameMap);
+                if (fapi.experimental.skipDraws === 0) return;
+                for (let i = 0; i < fapi.experimental.skipDraws; i++) fapi.SignalUpdater.update(gameMap);
+                game.navigation.gamePage.game.screenUpdated = true;
+            };
 
             let prevControls = game.navigation.gamePage.playerControls.update;
             let prevLeftClickCallback = game.navigation.gamePage.playerControls.leftClickCallback;
