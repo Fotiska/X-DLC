@@ -453,6 +453,9 @@
             } else if (code === 3) {
                 statusText = 'Циклические зависимости';
                 statusColor = 'var(--light-red)';
+            } else if (code === 6) {
+                statusText = 'Версия отличается';
+                statusColor = 'var(--light-red)';
             }
             const status = nameContainer.createText(statusText, 50);
             status.style.fontFamily = 'var(--font)';
@@ -602,10 +605,14 @@
         return false;
     }
     function loadMod(id, manifest) {
-        if (Object.keys(loadResults).includes(id)) return;
+        if (Object.keys(loadResults).includes(id)) return loadResults[id].code === 1;
+        if (manifest.xdlcversion !== fapi.VERSION) {
+            loadResults[id] = {'manifest': manifest, 'code': 6};
+            return false;
+        }
         if (checkCircularDependency()) {
             loadResults[id] = {'manifest': manifest, 'code': 3};
-            return;
+            return false;
         }
         let dependencies_founded = true;
         const not_founded_dependencies = [];
@@ -613,28 +620,29 @@
             if (!manifests.includes(dependency)) {
                 dependencies_founded = false;
                 not_founded_dependencies.push(dependency);
-                return
+                return false;
             }
             loadMod(dependency, manifests[dependency]);
         });
         if (!dependencies_founded) {
             loadResults[id] = {'manifest': manifest, 'code': 4, 'not_founded': not_founded_dependencies};
-            return;
+            return false;
         }
         const xhr = new XMLHttpRequest();
         xhr.open("GET", raw(manifest.script), false);
         xhr.send();
         if (xhr.status !== 200) {
             loadResults[id] = {'manifest': manifest, 'code': 0};
-            return;
+            return false;
         }
-        console.log(4);
         try {
             new Function(xhr.responseText).call(undefined);
             loadResults[id] = {'manifest': manifest, 'code': 1};
+            return true;
         } catch(e) {
             loadResults[id] = {'manifest': manifest, 'code': 2, 'error': e};
             console.log(e);
+            return false;
         }
     }
     Object.keys(manifests).forEach((id) => loadMod(id, manifests[id]));
@@ -645,6 +653,7 @@
      * 3 - циклические зависимости
      * 4 - зависимость не найдена
      * 5 - требуется перезагрузка
+     * 6 - версия модлоадера отличается
      */
     // endregion
 
