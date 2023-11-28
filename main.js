@@ -187,172 +187,6 @@
             this.clear();
         }
     }
-    class XDLCPage extends FModPage {
-        constructor() {
-            super('x_dlc.main');
-            this.translates = ['Mods', 'Моды', 'Моды', 'Моды']
-            this.drawCallback = () => undefined;
-            this.modsInfo = [];
-        }
-        draw(element) {
-            super.draw(element);
-            this.createSpace("100px");
-            this.modsContainer = this.createContainer(20, false);
-            this.modsContainer.container.style.backgroundColor = 'var(--norm-blue)';
-            this.modsContainer.createSpace('50px');
-            this.createSpace("50px");
-            this.infoContainer = this.createContainer(40, false);
-            this.infoContainer.container.style.backgroundColor = 'var(--norm-blue)';
-            this.createSpace("100px");
-            this.xdlcContainer = this.createContainer(30, false);
-            this.xdlcContainer.container.style.backgroundColor = 'var(--norm-blue)';
-            this.createSpace("100px");
-            this.modsInfo = [];
-            results.forEach(([mod, code, error]) => {
-                this.drawMod(mod, code, error);
-            });
-            this.jsonContainer = this.xdlcContainer.createContainer('50px', true);
-            this.jsonContainer.container.style.padding = '10px';
-            this.jsonInput = this.jsonContainer.createInput('Ссылка на `.json` файл', 'text');
-            this.jsonInput.style.backgroundColor = 'var(--blue)';
-            this.jsonContainer.createSpace('25px');
-            this.loadBtn = this.jsonContainer.createButton('Загрузить', '150px');
-            this.loadBtn.style.backgroundColor = 'var(--light-green)';
-            this.loadBtn.onclick = () => {
-                if (this.jsonInput.value === '') return;
-                const xhr = new XMLHttpRequest();
-                xhr.open("GET", raw(this.jsonInput.value), false);
-                xhr.send();
-                let modJson;
-                try {
-                    modJson = JSON.parse(xhr.responseText)
-                } catch {
-                    modJson = false;
-                }
-                if (xhr.status !== 200 || !modJson || Object.keys(this.modsInfo).includes(modJson.id)) {
-                    this.loadBtn.style.backgroundColor = 'var(--light-red)';
-                    this.loadBtn.textContent = 'Ошибка';
-                    setTimeout(() => {
-                        this.loadBtn.style.backgroundColor = 'var(--light-green)';
-                        this.loadBtn.textContent = 'Загрузить';
-                    }, 250);
-                    return;
-                }
-                results.push([modJson, 201]);
-                this.drawMod(modJson, 201);
-                loadingMods.push([true, this.jsonInput.value]);
-                localStorage.setItem('mods', JSON.stringify(loadingMods));
-            }
-        }
-        drawMod(mod, code, error=undefined) {
-            const modContainer = this.modsContainer.createContainer("100px", true);
-            modContainer.container.style.backgroundColor = 'var(--blue)';
-            modContainer.container.style.boxSizing = 'border-box';
-            modContainer.container.style.padding = '10px';
-            modContainer.container.style.marginBottom = '15px';
-            modContainer.container.style.cursor = 'pointer';
-            const image = modContainer.createImage(mod.icon, '80px');
-            image.style.backgroundColor = 'var(--background)';
-            image.style.borderRadius = '20px';
-            const nameContainer = modContainer.createContainer('100%', false);
-            nameContainer.container.style.padding = '10px';
-            const name = nameContainer.createText(mod.name, 50);
-            name.style.fontWeight = '700';
-            name.style.fontSize = '22px';
-            name.style.color = '#fff';
-            let statusText = '';
-            let statusColor = '';
-            if (code === 200) {
-                statusText = 'Загружен!';
-                statusColor = 'var(--light-green)';
-            } else if (code === 201) {
-                statusText = 'Требует перезагрузки';
-                statusColor = 'var(--light-blue)';
-            } else if (code === 400) {
-                statusText = 'Мод не найден';
-                statusColor = 'var(--light-red)';
-            } else if (code === 406) {
-                statusText = 'Произошла ошибка';
-                statusColor = 'var(--light-red)';
-            }
-            const status = nameContainer.createText(statusText, 50);
-            status.style.fontFamily = 'var(--font)';
-            status.style.fontWeight = '400';
-            status.style.fontSize = '16px';
-            status.style.color = statusColor;
-            modContainer.container.onclick = () => {
-                if (this.selectedMod === mod.id) return;
-                this.selectedMod = mod.id;
-                this.updateSelectedMods()
-                this.showModInfo(mod, code, error);
-            }
-            this.modsInfo[mod.id] = [modContainer.container, status, mod];
-        }
-        updateSelectedMods() {
-            Object.values(this.modsInfo).forEach(([modContainer, status, mod]) => {
-                if (modContainer.style.backgroundColor === 'var(--dark-blue)') {
-                    modContainer.style.cursor = 'not-allowed';
-                    return;
-                }
-
-                if (mod.id === this.selectedMod) {
-                    modContainer.style.backgroundColor = 'var(--background)';
-                    modContainer.style.cursor = 'default';
-                }
-                else {
-                    modContainer.style.backgroundColor = 'var(--blue)';
-                    modContainer.style.cursor = 'pointer';
-                }
-            });
-        }
-        showModInfo(mod, code, error=undefined) {
-            this.closeModInfo();
-            const del = this.infoContainer.createText(`Удалить \`${mod.name}\``, '20px');
-            del.style.padding = '5px';
-            del.style.backgroundColor = 'var(--light-red)';
-            del.style.lineHeight = '20px';
-            del.style.fontFamily = 'var(--font)';
-            del.style.fontWeight = '400';
-            del.style.fontSize = '16px';
-            del.style.margin = '10px';
-            del.style.borderRadius = '8px';
-            del.style.cursor = 'pointer';
-            del.onclick = () => {
-                results.forEach((result) => {
-                    if (result[0].id === mod.id) result[1] = 404;
-                });
-                this.modsInfo[mod.id][1].textContent = 'Удалён';
-                this.modsInfo[mod.id][1].style.color = 'var(--light-red)';
-                this.modsInfo[mod.id][0].style.backgroundColor = 'var(--dark-blue)';
-                loadingMods.forEach((loadMod) => {
-                    const xhr = new XMLHttpRequest();
-                    xhr.open("GET", raw(loadMod[1]), false);
-                    xhr.send();
-                    let modJson;
-                    try {
-                        modJson = JSON.parse(xhr.responseText)
-                    } catch {
-                        modJson = false;
-                    }
-                    if (xhr.status !== 200 || !modJson) {
-                        loadingMods.splice(loadingMods.indexOf(loadMod), 1);
-                        return;
-                    }
-                    if (modJson.id === mod.id) loadingMods.splice(loadingMods.indexOf(loadMod), 1);
-                    this.closeModInfo();
-                })
-                localStorage.setItem('mods', JSON.stringify(loadingMods));
-                this.selectedMod = '';
-                this.updateSelectedMods();
-                // Добавить настройку моментального перезапуска при удалении мода
-            }
-            const loadedMod = fapi.getModByIdName(mod.id);
-            if (loadedMod !== undefined) loadedMod.showUI(this.infoContainer);
-        }
-        closeModInfo() {
-            this.infoContainer.clear();
-        }
-    }
     class FModal {
         constructor() {
             this.modal = document.createElement('dialog');
@@ -465,14 +299,14 @@
         constructor() {
             this.FMODARROW = FModArrow;
             this.MAX_TYPE = 25;
+            this.VERSION = 2;
             this.MAX_TEXTURE_INDEX = 25;
             this.BASIC_TYPES = 24;
             this.ID_SYMBOLS = 'abcdefghijklmnopqrstuvwxyz_.'.split('');
             this.modules = modules;
             this.imodules = imodules;
             this.experimental = {
-                'updateLevelArrow': true,
-                'skipDraws': 0,
+                'updateLevelArrow': true, // Обновление сигнала стрелочки из уровня
             }
             this.mods = [];
             this.pages = {};
@@ -507,6 +341,204 @@
             return mod;
         }
     }
+    // endregion
+
+    fapi = new FAPI();
+    window.fapi = fapi;
+    window.ref = ref;
+
+    // region Handler Classes
+    new class XDLCPage extends FModPage {
+        constructor() {
+            super('x_dlc.main');
+            this.translates = ['Mods', 'Моды', 'Моды', 'Моды']
+            this.drawCallback = () => undefined;
+            this.modsInfo = [];
+        }
+        draw(element) {
+            super.draw(element);
+            this.createSpace("100px");
+            this.modsContainer = this.createContainer(20, false);
+            this.modsContainer.container.style.backgroundColor = 'var(--norm-blue)';
+            this.modsContainer.createSpace('50px');
+            this.createSpace("50px");
+            this.infoContainer = this.createContainer(40, false);
+            this.infoContainer.container.style.backgroundColor = 'var(--norm-blue)';
+            this.createSpace("100px");
+            this.xdlcContainer = this.createContainer(30, false);
+            this.xdlcContainer.container.style.backgroundColor = 'var(--norm-blue)';
+            this.createSpace("100px");
+            this.modsInfo = [];
+            console.log(loadResults);
+            Object.keys(loadResults).forEach((id) => this.drawMod(loadResults[id]));
+            this.jsonContainer = this.xdlcContainer.createContainer('50px', true);
+            this.jsonContainer.container.style.padding = '10px';
+            this.jsonInput = this.jsonContainer.createInput('Ссылка на `.json` файл', 'text');
+            this.jsonInput.style.backgroundColor = 'var(--blue)';
+            this.jsonContainer.createSpace('25px');
+            this.loadBtn = this.jsonContainer.createButton('Загрузить', '150px');
+            this.loadBtn.style.backgroundColor = 'var(--light-green)';
+            this.loadBtn.onclick = () => {
+                if (this.jsonInput.value === '') return;
+                const xhr = new XMLHttpRequest();
+                xhr.open("GET", raw(this.jsonInput.value), false);
+                xhr.send();
+                let modJson;
+                try {
+                    modJson = JSON.parse(xhr.responseText)
+                    if (modJson.name === undefined) modJson.name = 'Unknown';
+                    if (modJson.author === undefined) modJson.author = 'Unknown';
+                    if (modJson.icon === undefined) modJson.icon = 'Unknown';
+                    if (modJson.dependencies === undefined) modJson.dependencies = [];
+
+                    if (modJson.id === undefined) modJson = false;
+                    else if (modJson.script === undefined) modJson = false;
+                } catch {
+                    modJson = false;
+                }
+                if (xhr.status !== 200 || !modJson || Object.keys(this.modsInfo).includes(modJson.id)) {
+                    this.loadBtn.style.backgroundColor = 'var(--light-red)';
+                    this.loadBtn.textContent = 'Ошибка';
+                    setTimeout(() => {
+                        this.loadBtn.style.backgroundColor = 'var(--light-green)';
+                        this.loadBtn.textContent = 'Загрузить';
+                    }, 250);
+                    return;
+                }
+                loadResults[modJson.id] = {'manifest': modJson, 'code': 5};
+                this.drawMod(loadResults[modJson.id]);
+                modsToLoad.push([true, raw(this.jsonInput.value)]);
+                localStorage.setItem('mods', JSON.stringify(modsToLoad));
+            }
+        }
+        drawMod(loadResult) {
+            console.log(loadResult);
+            const mod = loadResult.manifest;
+            const code = loadResult.code;
+            const error = loadResult.error;
+            const not_founded = loadResult.not_founded;
+
+            const modContainer = this.modsContainer.createContainer("100px", true);
+            modContainer.container.style.backgroundColor = 'var(--blue)';
+            modContainer.container.style.boxSizing = 'border-box';
+            modContainer.container.style.padding = '10px';
+            modContainer.container.style.marginBottom = '15px';
+            modContainer.container.style.cursor = 'pointer';
+            const image = modContainer.createImage(mod.icon, '80px');
+            image.style.backgroundColor = 'var(--background)';
+            image.style.borderRadius = '20px';
+            const nameContainer = modContainer.createContainer('100%', false);
+            nameContainer.container.style.padding = '10px';
+            const name = nameContainer.createText(mod.name, 50);
+            name.style.fontWeight = '700';
+            name.style.fontSize = '22px';
+            name.style.color = '#fff';
+            let statusText = '';
+            let statusColor = '';
+            if (code === 1) {
+                statusText = 'Загружен!';
+                statusColor = 'var(--light-green)';
+            } else if (code === 5) {
+                statusText = 'Требует перезагрузки';
+                statusColor = 'var(--light-blue)';
+            } else if (code === 0) {
+                statusText = 'Мод не найден';
+                statusColor = 'var(--light-red)';
+            } else if (code === 2) {
+                statusText = 'Произошла ошибка';
+                statusColor = 'var(--light-red)';
+            } else if (code === 4) {
+                statusText = 'Не найдены зависимости';
+                statusColor = 'var(--light-red)';
+            } else if (code === 3) {
+                statusText = 'Циклические зависимости';
+                statusColor = 'var(--light-red)';
+            }
+            const status = nameContainer.createText(statusText, 50);
+            status.style.fontFamily = 'var(--font)';
+            status.style.fontWeight = '400';
+            status.style.fontSize = '16px';
+            status.style.color = statusColor;
+            modContainer.container.onclick = () => {
+                if (this.selectedMod === mod.id) return;
+                this.selectedMod = mod.id;
+                this.updateSelectedMods()
+                this.showModInfo(loadResult);
+            }
+            this.modsInfo[mod.id] = [modContainer.container, status, mod];
+        }
+        updateSelectedMods() {
+            Object.values(this.modsInfo).forEach(([modContainer, status, mod]) => {
+                if (modContainer.style.backgroundColor === 'var(--dark-blue)') {
+                    modContainer.style.cursor = 'not-allowed';
+                    return;
+                }
+
+                if (mod.id === this.selectedMod) {
+                    modContainer.style.backgroundColor = 'var(--background)';
+                    modContainer.style.cursor = 'default';
+                }
+                else {
+                    modContainer.style.backgroundColor = 'var(--blue)';
+                    modContainer.style.cursor = 'pointer';
+                }
+            });
+        }
+        showModInfo(loadResult) {
+            const mod = loadResult.manifest;
+            const code = loadResult.code;
+            const error = loadResult.error;
+            const not_founded = loadResult.not_founded;
+
+            this.closeModInfo();
+            const del = this.infoContainer.createText(`Удалить \`${mod.name}\``, '20px');
+            del.style.padding = '5px';
+            del.style.backgroundColor = 'var(--light-red)';
+            del.style.lineHeight = '20px';
+            del.style.fontFamily = 'var(--font)';
+            del.style.fontWeight = '400';
+            del.style.fontSize = '16px';
+            del.style.margin = '10px';
+            del.style.borderRadius = '8px';
+            del.style.cursor = 'pointer';
+            del.onclick = () => {
+                loadResults[mod.id].code = 5;
+                this.modsInfo[mod.id][1].textContent = 'Удалён';
+                this.modsInfo[mod.id][1].style.color = 'var(--light-red)';
+                this.modsInfo[mod.id][0].style.backgroundColor = 'var(--dark-blue)';
+                modsToLoad.forEach((pair) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("GET", raw(pair[1]), false);
+                    xhr.send();
+                    let modJson;
+                    try {
+                        modJson = JSON.parse(xhr.responseText)
+                        if (modJson.name === undefined) modJson.name = 'Unknown';
+                        if (modJson.author === undefined) modJson.author = 'Unknown';
+                        if (modJson.icon === undefined) modJson.icon = 'Unknown';
+                        if (modJson.dependencies === undefined) modJson.dependencies = [];
+
+                        if (modJson.id === undefined) modJson = false;
+                        else if (modJson.script === undefined) modJson = false;
+                    } catch {
+                        modJson = false;
+                    }
+                    if (xhr.status !== 200 || !modJson || modJson.id === mod.id)
+                        modsToLoad.splice(modsToLoad.indexOf(pair), 1);
+                });
+                this.closeModInfo();
+                localStorage.setItem('mods', JSON.stringify(modsToLoad));
+                this.selectedMod = '';
+                this.updateSelectedMods();
+                // Добавить настройку моментального перезапуска при удалении мода
+            }
+            const loadedMod = fapi.getModByIdName(mod.id);
+            if (loadedMod !== undefined) loadedMod.showUI(this.infoContainer);
+        }
+        closeModInfo() {
+            this.infoContainer.clear();
+        }
+    }
     new class ModalHandler {
         constructor() {
             this.openedModal = null;
@@ -528,45 +560,93 @@
     };
     // endregion
 
-    fapi = new FAPI();
-    window.fapi = fapi;
-    window.ref = ref;
-
-    let loadingMods = JSON.parse(localStorage.getItem("mods") ?? '[]');
-    const results = [];
+    // region Mod Loading
     function raw(path) {
         if (path.includes('githubusercontent')) return path;
-        else return path + '?raw=true';
+        else return path.replace('github', 'raw.githubusercontent').replace('blob', '');
     }
-    let index = 0;
-    loadingMods.forEach(([enabled, json]) => {
+    if (localStorage.getItem('xdlcversion') !== fapi.VERSION.toString()) {
+        localStorage.setItem('xdlcversion', fapi.VERSION.toString());
+        localStorage.setItem('mods', '[]');
+    }
+    const modsToLoad = JSON.parse(localStorage.getItem('mods') ?? '[]');
+    const manifests = {};
+    const loadResults = {};
+    modsToLoad.forEach((pair) => {
+        const enabled = pair[0];
+        const jsonURL = pair[1];
+        if (!enabled) return; // TODO: Добавить потом выключение мода
         const xhr = new XMLHttpRequest();
-        xhr.open("GET", raw(json), false);
+        xhr.open("GET", raw(jsonURL), false);
         xhr.send();
-        if (xhr.status !== 200) {
-            loadingMods.splice(index, 1);
-            localStorage.setItem('mods', JSON.stringify(loadingMods)); // `mod.json` не найден
+        let modJson;
+        try {
+            modJson = JSON.parse(xhr.responseText)
+            if (modJson.name === undefined) modJson.name = 'Unknown';
+            if (modJson.author === undefined) modJson.author = 'Unknown';
+            if (modJson.icon === undefined) modJson.icon = 'Unknown';
+            if (modJson.dependencies === undefined) modJson.dependencies = [];
+
+            if (modJson.id === undefined) modJson = false;
+            else if (modJson.script === undefined) modJson = false;
+        } catch {
+            modJson = false;
+        }
+        if (xhr.status !== 200 || !modJson) {
+            modsToLoad.splice(modsToLoad.indexOf(pair), 1);
             return;
         }
-        const modJson = JSON.parse(xhr.responseText);
-        if (modJson.script === undefined) results.push([modJson, 206]);
-        xhr.open("GET", raw(modJson.script), false);
-        xhr.send();
-        if (xhr.status !== 200) {
-            results.push([modJson, 400]); // `script.js` не найден
+        manifests[modJson.id] = modJson;
+    })
+    function checkCircularDependency(id) {
+        return false;
+    }
+    function loadMod(id, manifest) {
+        if (Object.keys(loadResults).includes(id)) return;
+        if (checkCircularDependency()) {
+            loadResults[id] = {'manifest': manifest, 'code': 3};
             return;
         }
+        let dependencies_founded = true;
+        const not_founded_dependencies = [];
+        manifest.dependencies.forEach((dependency) => {
+            if (!manifests.includes(dependency)) {
+                dependencies_founded = false;
+                not_founded_dependencies.push(dependency);
+                return
+            }
+            loadMod(dependency, manifests[dependency]);
+        });
+        if (!dependencies_founded) {
+            loadResults[id] = {'manifest': manifest, 'code': 4, 'not_founded': not_founded_dependencies};
+            return;
+        }
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", raw(manifest.script), false);
+        xhr.send();
+        if (xhr.status !== 200) {
+            loadResults[id] = {'manifest': manifest, 'code': 0};
+            return;
+        }
+        console.log(4);
         try {
             new Function(xhr.responseText).call(undefined);
-            results.push([modJson, 200]) // `script.js` успешно загружен
+            loadResults[id] = {'manifest': manifest, 'code': 1};
         } catch(e) {
-            results.push([modJson, 406, e]) // `script.js` не удалось загрузить из за ошибки
+            loadResults[id] = {'manifest': manifest, 'code': 2, 'error': e};
             console.log(e);
         }
-        index++;
-    });
-    
-    modPage = new XDLCPage();
+    }
+    Object.keys(manifests).forEach((id) => loadMod(id, manifests[id]));
+    /*
+     * 0 - `script.js` не найден
+     * 1 - `script.js` загружен
+     * 2 - `script.js` не загружен вследствие ошибки
+     * 3 - циклические зависимости
+     * 4 - зависимость не найдена
+     * 5 - требуется перезагрузка
+     */
+    // endregion
 
     ref('ChunkUpdates', (chunkUpdates) => {
         // TODO: Заменить `SignalHandler` на `ChunkUpdates`
@@ -1066,7 +1146,7 @@
             this.mouseHandler.leftClickCallback = this.leftClickCallback;
             const pKDC = this.keyDownCallback;
             this.keyDownCallback = (e, t) => {
-                if (imodules.modalhandler.openedAnyModal()) return;
+                if (imodules.ModalHandler.openedAnyModal()) return;
                 // TODO: Возможность подписаться на ивент
                 pKDC(e, t);
             }
@@ -1074,8 +1154,8 @@
             imodules.playercontrols = this;
         }
         update() {
-            if (imodules.playercontrols.keyboardHandler.getKeyPressed('Escape') && imodules.modalhandler.closeModal()) return;
-            else if (imodules.modalhandler.openedAnyModal()) return document.body.style.cursor = 'default';
+            if (imodules.playercontrols.keyboardHandler.getKeyPressed('Escape') && imodules.ModalHandler.closeModal()) return;
+            else if (imodules.ModalHandler.openedAnyModal()) return document.body.style.cursor = 'default';
             super.update();
             const arrow = imodules.playercontrols.getArrowByMousePosition();
             if (arrow !== undefined && arrow.type > 24) {
@@ -1111,7 +1191,7 @@
     });
     ref('PlayerUI', (playerUI) => class PlayerUI extends playerUI {
         isMenuOpen() {
-            return null !== this.menu && !this.menu.getIsRemoved() || imodules.modalhandler.openedAnyModal();
+            return null !== this.menu && !this.menu.getIsRemoved() || imodules.ModalHandler.openedAnyModal();
         }
     });
     ref('GameMap', (gameMap) => class GameMap extends gameMap {
