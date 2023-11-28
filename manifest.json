@@ -16,6 +16,7 @@
       "js": ["main.js"],
       "css": ["dlc.css"],
       "run_at": "document_start",
+      "world": "MAIN",
       "all_frames": true
     }
   ],

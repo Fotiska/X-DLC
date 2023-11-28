@@ -444,10 +444,10 @@
         constructor(FAPI) {
             this.FAPI = FAPI;
             let dataHandler = this;
-            game.load.load = function(gameMap, data) {
+            game.load = function(gameMap, data) {
                 dataHandler.load(gameMap, data);
             };
-            game.save.save = function(gameMap) {
+            game.save = function(gameMap) {
                 return dataHandler.save(gameMap);
             };
             game.navigation.gamePage.game.selectedMap.__proto__.copyFromGameMap = function(gameMap) {
@@ -477,26 +477,7 @@
 
         save(gameMap) {
             const data = [];
-            let useMods = false;
-            gameMap.chunks.forEach((chunk) => {
-                const types = chunk.getArrowTypes()
-                types.forEach((type) => {
-                    if (type > 24) useMods = true;
-                })
-            })
-            const savedModsOrder = [];
-            if (useMods) {
-                data.push(255); // Конец обозначений модов
-                this.FAPI.mods.forEach((mod) => {
-                    if (data.length !== 1) data.push(254);
-                    mod.idname.split('').forEach((symbol) => {
-                        data.push(this.FAPI.ID_SYMBOLS.indexOf(symbol));
-                    })
-                    savedModsOrder.push(mod);
-                });
-                data.push(255); // Конец обозначений модов
-            }
-            data.push(0, 0); // ВЕРСИЯ ИГРЫ ( НЕ МЕНЯЕТСЯ )
+            data.push(0, 0);
             data.push(255 & gameMap.chunks.size, gameMap.chunks.size >> 8 & 255);
             gameMap.chunks.forEach((chunk) => {
                 const types = chunk.getArrowTypes();
@@ -509,13 +490,7 @@
                 data.push(types.length - 1);
                 types.forEach((arrowType) => {
                     const isFromMod = arrowType > 24;
-                    if (useMods && isFromMod) {
-                        data.push(255); // Обозначение что это стрелочка из мода
-                        let marrow = this.FAPI.getArrowByType(arrowType);
-                        data.push(marrow.id); // Айди стрелочки из мода
-                        data.push(savedModsOrder.indexOf(marrow.mod)); // Индекс мода из `обозначения модов`
-                    }
-                    else data.push(arrowType);
+                    data.push(arrowType);
                     data.push(0);
                     const n = data.length - 1;
                     let o = 0;
@@ -527,11 +502,6 @@
                                 const s = arrow.rotation | (arrow.flipped ? 1 : 0) << 2;
                                 data.push(e);
                                 data.push(s);
-                                if (useMods && isFromMod) {
-                                    if (arrow.custom_data === undefined) arrow.custom_data = [];
-                                    data.push(arrow.custom_data.length); // Длина данных стрелочки
-                                    data.push(...arrow.custom_data); // Данные стрелочки
-                                }
                                 o++;
                             }
                         }
@@ -1179,6 +1149,7 @@
             await new Promise(resolve => setTimeout(resolve, 10));
         }
     }
+
     console.log('FAPI Loaded');
     let fapi = new FAPI();
     await fapi.fetch();

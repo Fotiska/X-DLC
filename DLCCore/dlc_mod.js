@@ -1,3 +1,91 @@
+diagonalSplit1 = mod.registerArrow(0);
+diagonalSplit1.name = ["Diagonal splitter", "Диагональный разветвлитель", ".", "."];
+diagonalSplit1.activation = ["On any incoming signal.", "Любым входящим сигналом.", ".", "."];
+diagonalSplit1.action = ["Sends a signal to the left upper corner, and right upper corner.", "Передаёт сигнал в левый верхний угол, и правый верхний угол.", ".", "."];
+diagonalSplit1.icon_url = "https://raw.githubusercontent.com/w1zlm/Anything/main/arrow1.png";
+diagonalSplit1.update = (arrow) => {
+    if (arrow.signalsCount > 0) arrow.signal = 2;
+    else arrow.signal = 0;
+}
+diagonalSplit1.transmit = (arrow) => {
+    if (arrow.signal === 2) {
+        ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 1));
+        ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, -1));
+    }
+}
+
+
+colors = ['Красный', 'Синий', 'Жёлтый', 'Зелёный', 'Оранжевый', 'Фиолетовый', 'Чёрный'];
+colorDetector = mod.registerArrow(11);
+colorDetector.name = ["Color Detector", "Цветовой Детектор", ".", "."];
+colorDetector.activation = ["If the arrow behind has a signal of the Color you selected.", "Если стрелка позади имеет сигнал выбранного вами цвета.", ".", "."];
+colorDetector.action = ["Sends signal forward.", "Передает сигнал вперёд.", ".", "."];
+colorDetector.icon_url = "https://raw.githubusercontent.com/w1zlm/Anything/main/arrow12.png";
+colorDetector.clickable = true;
+colorDetector.update = (arrow) => {
+    arrow.signal = 0;
+    const backward_arrow = ChunkUpdates.getArrowAt(arrow, arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 1, 0);
+    if (backward_arrow !== undefined) arrow.signal = backward_arrow.lastSignal === arrow.custom_data[0] + 1 ? arrow.custom_data[0] + 1 : 0;
+};
+colorDetector.transmit = (arrow) => {
+    if (arrow.signal === arrow.custom_data[0] + 1) {
+        ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1));
+    }
+}
+colorDetector.click = (arrow, is_shift) => {
+    const color = arrow.custom_data[0];
+    const colorModal = ModalHandler.showModal()
+    const selectColor = colorModal.createSelect('Цвет', colors);
+    selectColor.value = colors[color];
+    selectColor.onchange = () => {
+        arrow.custom_data[0] = colors.indexOf(selectColor.value);
+    }
+};
+colorDetector.custom_data = [1];
+
+// Defines
+const FAPI = window.fapi;
+const ChunkUpdates = FAPI.modules.ChunkUpdates;
+const ModalHandler = FAPI.imodules.ModalHandler;
+
+const mod = FAPI.registerMod('fotis.dlc_core');
+
+// region RGB_Lamp
+const rgb_lamp = mod.registerArrow(0)
+rgb_lamp.name = ['RGB lamp','Разноцветная лампочка','Різнобарвна лампочка','Рознакаляровая лямпа'];
+rgb_lamp.activation = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
+rgb_lamp.action = ["Does nothing.","Ничего не делает.","Нічого не робить.","Нічога не рабіць."];
+rgb_lamp.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/rgb_lamp.png";
+rgb_lamp.clickable = true;
+rgb_lamp.update = (arrow) => {
+    let [color, activation, transmit] = arrow.custom_data;
+
+    if (color === 0) arrow.signal = arrow.signalsCount;
+    else if (activation === 0 && arrow.signalsCount > 0) arrow.signal = color;
+    else if (activation === 1) arrow.signal = color;
+    else if (activation === 2 && arrow.signalsCount === 0) arrow.signal = color;
+    else arrow.signal = 0;
+}
+rgb_lamp.transmit = (arrow) => {
+    let [color, activation, transmit] = arrow.custom_data;
+    if (arrow.signal !== 0 && transmit === 1) ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 0));
+}
+rgb_lamp.click = (arrow) => {
+
+}
+rgb_lamp.load_cd = (cd) => {
+    let transmit = cd[0] & 1;
+    let activation = (cd[1] >> 3) & 0b11;
+    let color = (cd[2] >> 5) & 0b111;
+    return [color, activation, transmit];
+}
+rgb_lamp.save_cd = (arrow) => {
+    return (arrow.custom_data[0] << 5) | (arrow.custom_data[1] << 3) | arrow.custom_data[2];
+}
+rgb_lamp.save_cd = (arrow);
+rgb_lamp.custom_data = [4, 0, 0];
+// endregion
+
 window.document.addEventListener('fapiloaded', function() {
     // regionЛГБТлампочка
     let лгбт_подсветочка = new window.game.FAPI.FModArrowType();
@@ -165,6 +253,7 @@ window.document.addEventListener('fapiloaded', function() {
 
     // TODO: Накопительная стрелка
     // TODO: Рандомизатор в 2 направления
+    // TODO: Кнопка которая выдаёт сигнал пока нажата ( зажимаемая, а не на один тик )
 
     game.navigation.gamePage.playerUI.toolbarController.inventory.element.appendChild(rgb_modal);
     game.navigation.gamePage.playerUI.toolbarController.inventory.element.appendChild(purple_modal);

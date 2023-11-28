@@ -1,21 +1,1541 @@
-(async () => {
-    function inject() {
-        sessionStorage.api_sources = JSON.stringify({
-            'icon': chrome.runtime.getURL('images/icon128.png'),
-            'rgb_lamp': chrome.runtime.getURL('images/rgb_lamp.png'),
-            'purple_arrow': chrome.runtime.getURL('images/purple_arrow.png'),
-            'purple_diagonal_arrow': chrome.runtime.getURL('images/purple_diagonal_arrow.png'),
-            'text_block': chrome.runtime.getURL('images/text_block.png'),
+(() => {
+    const modules = {};
+    const refs = [];
+    function ref(module, callback, order=0) {
+        // TODO: Сделать `order` чтобы некоторые ссылки загружались раньше остальных
+        // if (refs[module] !== undefined) console.warn(`Ref for \`${module}\` exists, be pretty accurate!`);
+        refs.push([module, callback]);
+    }
+    const imodules = {};
+    const pfc = Function.prototype.call;
+    Function.prototype.call = function(...e) {
+        pfc.apply(this, e);
+        let exports = e[2];
+        if (exports !== undefined && exports.__esModule === true) {
+            let emodules = Object.getOwnPropertyNames(exports);
+            emodules.splice(emodules.indexOf('__esModule'), 1);
+            emodules.forEach((emodule) => {
+                refs.forEach(([module, callback]) => {
+                    if (module === emodule) exports[emodule] = callback(exports[emodule]);
+                });
+                modules[emodule] = exports[emodule];
+            });
+        }
+    }
+
+    // region Classes
+    class FMod {
+        constructor(id, idname) {
+            let regex = /^[a-z._]+$/;
+            if (!regex.test(idname)) {
+                throw new Error(`Incorrect id: ${idname}`);
+            }
+            this.id = id;
+            this.idname = idname;
+            this.arrows = {};
+            this.showUI = (container) => undefined;
+        }
+        registerArrow(arrowId) {
+            const arrow = new FModArrow();
+            arrow.id = arrowId;
+            arrow.type = fapi.MAX_TYPE++;
+            arrow.mod = this;
+            this.arrows[arrowId] = arrow;
+            return arrow;
+        }
+    }
+    class FModArrow {
+        constructor() {
+            this.type = 0;
+            this.id = 0;
+            this.name = ["Unknown ( mod arrow )", "Unknown ( mod arrow )", "Unknown ( mod arrow )", "Unknown ( mod arrow )"]; // Как называется
+            this.activation = ["Unknown ( mod arrow )", "Unknown ( mod arrow )", "Unknown ( mod arrow )", "Unknown ( mod arrow )"]; // Как активируется
+            this.action = ["Unknown ( mod arrow )", "Unknown ( mod arrow )", "Unknown ( mod arrow )", "Unknown ( mod arrow )"]; // Куда передаёт сигнал
+            this.mod = null;
+            this.icon_url = ""; // Основная текстура
+            this.textures = undefined; // Дополнительные текстуры
+            this.clickable = false; // Может ли стрелочка нажиматься
+            this.pressable = false; // Может ли стрелочка зажиматься
+            this.custom_data = [];
+
+            this.update = () => undefined;
+            this.click = () => undefined; // Вызывается при нажатии на стрелочку
+            this.press = () => undefined; // Вызывается при зажатии стрелочки
+            this.transmit = () => undefined; // Вызывается после `update`
+            this.block = () => undefined; // Вызывается после `transmit`
+            this.draw = (arrow, index) => index;
+            this.save_cd = (arrow) => arrow.custom_data;
+            this.load_cd = (custom_data) => custom_data;
+        }
+    }
+    class FModPageContainer {
+        constructor(isHorizontal=true, container=undefined) {
+            this.containers = [];
+            this.isHorizontal = isHorizontal;
+            this.container = container;
+            if (container !== undefined) this.setContainer(container);
+        }
+
+        setContainer(container) {
+            this.container = container;
+            container.style.display = 'flex';
+            container.style.flexDirection = this.isHorizontal ? 'row' : 'column';
+        }
+
+        createContainer(size=100, isHorizontal=true) {
+            const div = document.createElement('div');
+            this.container.appendChild(div);
+            this.containers.push([div, size]);
+            this.updateContainers();
+            return new FModPageContainer(isHorizontal, div);
+        }
+
+        createSpace(size=10) {
+            const div = document.createElement('div');
+            this.container.appendChild(div);
+            this.containers.push([div, size]);
+            this.updateContainers();
+            return div;
+        }
+
+        createImage(src, size=100) {
+            const img = document.createElement('img');
+            img.src = src;
+            this.container.appendChild(img);
+            this.containers.push([img, size]);
+            this.updateContainers();
+            return img;
+        }
+
+        createText(text, size=100) {
+            const txt = document.createElement('div');
+            txt.style.fontFamily = 'var(--font)';
+            txt.style.color = '#fff';
+            txt.textContent = text;
+            this.container.appendChild(txt);
+            this.containers.push([txt, size]);
+            this.updateContainers();
+            return txt;
+        }
+
+        createInput(text, type, size=100) {
+            const inp = document.createElement('input');
+            inp.type = type;
+            inp.style.fontFamily = 'var(--font)';
+            inp.style.color = '#fff';
+            inp.style.padding = '10px';
+            inp.style.border = 'none';
+            inp.style.borderRadius = '16px';
+            inp.placeholder = text;
+            this.container.appendChild(inp);
+            this.containers.push([inp, size]);
+            this.updateContainers();
+            return inp;
+        }
+
+        createButton(text, size=100) {
+            const btn = document.createElement('button');
+            btn.style.fontFamily = 'var(--font)';
+            btn.style.color = '#fff';
+            btn.style.padding = '10px';
+            btn.style.cursor = 'pointer';
+            btn.style.border = 'none';
+            btn.style.borderRadius = '16px';
+            btn.textContent = text;
+            this.container.appendChild(btn);
+            this.containers.push([btn, size]);
+            this.updateContainers();
+            return btn;
+        }
+
+        clear() {
+            this.containers = [];
+            this.container.innerHTML = '';
+        }
+
+        updateContainers() {
+            let maxSize = 0;
+            this.containers.forEach(([div, size]) => {
+                if (typeof size === "number") maxSize += size;
+            });
+            this.containers.forEach(([div, size]) => {
+                let value;
+                if (typeof size === "number") value = `${(size / maxSize * 100)}%`;
+                else value = size;
+                if (this.isHorizontal) div.style.width = value;
+                else div.style.height = value;
+            });
+        }
+        // TODO: Сделать методы для создания `Select` с `Option`, `TextArea`
+    }
+    class FModPage extends FModPageContainer {
+        constructor(idname, isHorizontal=true) {
+            super(isHorizontal);
+            let regex = /^[a-z._]+$/;
+            if (!regex.test(idname)) throw new Error(`Incorrect id: ${idname}`);
+            this.idname = idname;
+            this.translates = ['Unknown', 'Unknown', 'Unknown', 'Unknown'];
+            this.icon_url = 'https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/text_block.png';
+            this.drawCallback = () => {console.log(`Need to drawn \`${this.idname}\` mod page`)};
+            fapi.pages[this.idname] = this;
+        }
+        draw(element) {
+            this.setContainer(element);
+            this.drawCallback(element);
+        }
+        close() {
+            this.clear();
+        }
+    }
+    class XDLCPage extends FModPage {
+        constructor() {
+            super('x_dlc.main');
+            this.translates = ['Mods', 'Моды', 'Моды', 'Моды']
+            this.drawCallback = () => undefined;
+            this.modsInfo = [];
+        }
+        draw(element) {
+            super.draw(element);
+            this.createSpace("100px");
+            this.modsContainer = this.createContainer(20, false);
+            this.modsContainer.container.style.backgroundColor = 'var(--norm-blue)';
+            this.modsContainer.createSpace('50px');
+            this.createSpace("50px");
+            this.infoContainer = this.createContainer(40, false);
+            this.infoContainer.container.style.backgroundColor = 'var(--norm-blue)';
+            this.createSpace("100px");
+            this.xdlcContainer = this.createContainer(30, false);
+            this.xdlcContainer.container.style.backgroundColor = 'var(--norm-blue)';
+            this.createSpace("100px");
+            this.modsInfo = [];
+            results.forEach(([mod, code, error]) => {
+                this.drawMod(mod, code, error);
+            });
+            this.jsonContainer = this.xdlcContainer.createContainer('50px', true);
+            this.jsonContainer.container.style.padding = '10px';
+            this.jsonInput = this.jsonContainer.createInput('Ссылка на `.json` файл', 'text');
+            this.jsonInput.style.backgroundColor = 'var(--blue)';
+            this.jsonContainer.createSpace('25px');
+            this.loadBtn = this.jsonContainer.createButton('Загрузить', '150px');
+            this.loadBtn.style.backgroundColor = 'var(--light-green)';
+            this.loadBtn.onclick = () => {
+                if (this.jsonInput.value === '') return;
+                const xhr = new XMLHttpRequest();
+                xhr.open("GET", raw(this.jsonInput.value), false);
+                xhr.send();
+                let modJson;
+                try {
+                    modJson = JSON.parse(xhr.responseText)
+                } catch {
+                    modJson = false;
+                }
+                if (xhr.status !== 200 || !modJson || Object.keys(this.modsInfo).includes(modJson.id)) {
+                    this.loadBtn.style.backgroundColor = 'var(--light-red)';
+                    this.loadBtn.textContent = 'Ошибка';
+                    setTimeout(() => {
+                        this.loadBtn.style.backgroundColor = 'var(--light-green)';
+                        this.loadBtn.textContent = 'Загрузить';
+                    }, 250);
+                    return;
+                }
+                results.push([modJson, 201]);
+                this.drawMod(modJson, 201);
+                loadingMods.push([true, this.jsonInput.value]);
+                localStorage.setItem('mods', JSON.stringify(loadingMods));
+            }
+        }
+        drawMod(mod, code, error=undefined) {
+            const modContainer = this.modsContainer.createContainer("100px", true);
+            modContainer.container.style.backgroundColor = 'var(--blue)';
+            modContainer.container.style.boxSizing = 'border-box';
+            modContainer.container.style.padding = '10px';
+            modContainer.container.style.marginBottom = '15px';
+            modContainer.container.style.cursor = 'pointer';
+            const image = modContainer.createImage(mod.icon, '80px');
+            image.style.backgroundColor = 'var(--background)';
+            image.style.borderRadius = '20px';
+            const nameContainer = modContainer.createContainer('100%', false);
+            nameContainer.container.style.padding = '10px';
+            const name = nameContainer.createText(mod.name, 50);
+            name.style.fontWeight = '700';
+            name.style.fontSize = '22px';
+            name.style.color = '#fff';
+            let statusText = '';
+            let statusColor = '';
+            if (code === 200) {
+                statusText = 'Загружен!';
+                statusColor = 'var(--light-green)';
+            } else if (code === 201) {
+                statusText = 'Требует перезагрузки';
+                statusColor = 'var(--light-blue)';
+            } else if (code === 400) {
+                statusText = 'Мод не найден';
+                statusColor = 'var(--light-red)';
+            } else if (code === 406) {
+                statusText = 'Произошла ошибка';
+                statusColor = 'var(--light-red)';
+            }
+            const status = nameContainer.createText(statusText, 50);
+            status.style.fontFamily = 'var(--font)';
+            status.style.fontWeight = '400';
+            status.style.fontSize = '16px';
+            status.style.color = statusColor;
+            modContainer.container.onclick = () => {
+                if (this.selectedMod === mod.id) return;
+                this.selectedMod = mod.id;
+                this.updateSelectedMods()
+                this.showModInfo(mod, code, error);
+            }
+            this.modsInfo[mod.id] = [modContainer.container, status, mod];
+        }
+        updateSelectedMods() {
+            Object.values(this.modsInfo).forEach(([modContainer, status, mod]) => {
+                if (modContainer.style.backgroundColor === 'var(--dark-blue)') {
+                    modContainer.style.cursor = 'not-allowed';
+                    return;
+                }
+
+                if (mod.id === this.selectedMod) {
+                    modContainer.style.backgroundColor = 'var(--background)';
+                    modContainer.style.cursor = 'default';
+                }
+                else {
+                    modContainer.style.backgroundColor = 'var(--blue)';
+                    modContainer.style.cursor = 'pointer';
+                }
+            });
+        }
+        showModInfo(mod, code, error=undefined) {
+            this.closeModInfo();
+            const del = this.infoContainer.createText(`Удалить \`${mod.name}\``, '20px');
+            del.style.padding = '5px';
+            del.style.backgroundColor = 'var(--light-red)';
+            del.style.lineHeight = '20px';
+            del.style.fontFamily = 'var(--font)';
+            del.style.fontWeight = '400';
+            del.style.fontSize = '16px';
+            del.style.margin = '10px';
+            del.style.borderRadius = '8px';
+            del.style.cursor = 'pointer';
+            del.onclick = () => {
+                results.forEach((result) => {
+                    if (result[0].id === mod.id) result[1] = 404;
+                });
+                this.modsInfo[mod.id][1].textContent = 'Удалён';
+                this.modsInfo[mod.id][1].style.color = 'var(--light-red)';
+                this.modsInfo[mod.id][0].style.backgroundColor = 'var(--dark-blue)';
+                loadingMods.forEach((loadMod) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("GET", raw(loadMod[1]), false);
+                    xhr.send();
+                    let modJson;
+                    try {
+                        modJson = JSON.parse(xhr.responseText)
+                    } catch {
+                        modJson = false;
+                    }
+                    if (xhr.status !== 200 || !modJson) {
+                        loadingMods.splice(loadingMods.indexOf(loadMod), 1);
+                        return;
+                    }
+                    if (modJson.id === mod.id) loadingMods.splice(loadingMods.indexOf(loadMod), 1);
+                    this.closeModInfo();
+                })
+                localStorage.setItem('mods', JSON.stringify(loadingMods));
+                this.selectedMod = '';
+                this.updateSelectedMods();
+                // Добавить настройку моментального перезапуска при удалении мода
+            }
+            const loadedMod = fapi.getModByIdName(mod.id);
+            if (loadedMod !== undefined) loadedMod.showUI(this.infoContainer);
+        }
+        closeModInfo() {
+            this.infoContainer.clear();
+        }
+    }
+    class FModal {
+        constructor() {
+            this.modal = document.createElement('dialog');
+            this.modal.style.backgroundColor = 'rgba(0, 0, 0, 0.75)';
+            this.modal.style.width = '100%';
+            this.modal.style.height = '100%';
+            this.modal.style.zIndex = '2';
+            this.modal.style.border = 'none';
+            this.modal.style.display = 'flex';
+            this.modal.style.flexWrap = 'wrap';
+            this.modal.style.alignContent = 'center';
+            this.modal.style.justifyContent = 'center';
+            this.content = document.createElement('div');
+            this.content.style.backgroundColor = 'var(--light-blue)';
+            this.content.style.padding = '10px';
+            this.content.style.borderRadius = '15px';
+            this.content.style.display = 'flex';
+            this.content.style.flexDirection = 'column';
+            this.content.style.gap = '10px';
+            this.modal.appendChild(this.content);
+            document.body.appendChild(this.modal);
+            this.modal.show();
+        }
+        close() {
+            this.modal.close();
+            this.modal.remove();
+        }
+        createInput(label, placeholder, type='number') {
+            const pair = document.createElement('div');
+            pair.style.display = 'flex';
+            const text = document.createElement('div');
+            text.style.padding = '6px';
+            text.style.fontFamily = 'var(--font)';
+            text.style.fontSize = '18px';
+            text.textContent = label;
+            pair.appendChild(text);
+            const input = document.createElement('input');
+            input.style.border = 'none';
+            input.style.backgroundColor = 'var(--background)';
+            input.style.borderRadius = '8px';
+            input.style.padding = '0 10px';
+            input.style.fontFamily = 'var(--font)';
+            input.style.fontSize = '18px';
+            input.style.width = '-webkit-fill-available';
+            input.style.color = '#fff';
+            input.type = type;
+            input.placeholder = placeholder;
+            pair.appendChild(input);
+            this.content.appendChild(pair);
+            return input;
+        };
+        createTextArea(label, placeholder, width='350px', height='250px') {
+            const pair = document.createElement('div');
+            pair.style.display = 'flex';
+            const text = document.createElement('div');
+            text.style.padding = '6px';
+            text.style.fontFamily = 'var(--font)';
+            text.style.fontSize = '18px';
+            text.style.lineHeight = 'auto';
+            text.textContent = label;
+            pair.appendChild(text);
+            const input = document.createElement('textarea');
+            input.style.border = 'none';
+            input.style.backgroundColor = 'var(--background)';
+            input.style.borderRadius = '8px';
+            input.style.padding = '10px';
+            input.style.resize = 'none';
+            input.style.fontFamily = 'var(--font)';
+            input.style.fontSize = '18px';
+            input.style.width = '-webkit-fill-available';
+            input.style.width = width;
+            input.style.height = height;
+            input.style.color = '#fff';
+            input.placeholder = placeholder;
+            pair.appendChild(input);
+            this.content.appendChild(pair);
+            return text;
+        };
+        createSelect(label, options) {
+            const pair = document.createElement('div');
+            pair.style.display = 'flex';
+            const text = document.createElement('div');
+            text.style.padding = '6px';
+            text.style.fontFamily = 'var(--font)';
+            text.style.fontSize = '18px';
+            text.textContent = label;
+            pair.appendChild(text);
+            const select = document.createElement('select');
+            select.style.border = 'none';
+            select.style.backgroundColor = 'var(--background)';
+            select.style.borderRadius = '8px';
+            select.style.padding = '0 10px';
+            select.style.fontFamily = 'var(--font)';
+            select.style.fontSize = '18px';
+            select.style.width = '-webkit-fill-available';
+            select.style.color = '#fff';
+            options.forEach((value) => {
+                const option = document.createElement('option');
+                option.style.color = '#fff';
+                option.value = value;
+                option.text = value;
+                select.appendChild(option);
+            });
+            pair.appendChild(select);
+            this.content.appendChild(pair);
+            return select;
+        };
+    }
+    class FAPI {
+        constructor() {
+            this.FMODARROW = FModArrow;
+            this.MAX_TYPE = 25;
+            this.MAX_TEXTURE_INDEX = 25;
+            this.BASIC_TYPES = 24;
+            this.ID_SYMBOLS = 'abcdefghijklmnopqrstuvwxyz_.'.split('');
+            this.modules = modules;
+            this.imodules = imodules;
+            this.experimental = {
+                'updateLevelArrow': true,
+                'skipDraws': 0,
+            }
+            this.mods = [];
+            this.pages = {};
+        }
+        /**
+         * @param {number} type Айди стрелочки
+         * @return {FModArrow} Стрелочка из мода ( FModArrow )
+         */
+        getArrowByType = function(type) {
+            let arrow;
+            this.mods.forEach((fmod) => {
+                Object.values(fmod.arrows).forEach((farrow) => {
+                    if (farrow.type === type) arrow = farrow;
+                });
+            });
+            return arrow;
+        }
+        getModByIdName = function(idname) {
+            let mod;
+            this.mods.forEach((fmod) => {
+                if (fmod.idname === idname) mod = fmod;
+            });
+            return mod;
+        }
+        registerMod(idname) {
+            let mod = new FMod();
+            mod.id = this.mods.length;
+            mod.name = name;
+            mod.idname = idname;
+            this.mods.push(mod);
+            console.log(`Mod \`${idname}\` registered`)
+            return mod;
+        }
+    }
+    new class ModalHandler {
+        constructor() {
+            this.openedModal = null;
+            imodules.ModalHandler = this;
+        }
+        openedAnyModal() {
+            return this.openedModal !== null;
+        }
+        closeModal() {
+            if (this.openedModal === null) return false;
+            this.openedModal.close();
+            window.document.activeElement.blur();
+            this.openedModal = null;
+            return true;
+        }
+        showModal() {
+            return this.openedModal = new FModal();
+        }
+    };
+    // endregion
+
+    fapi = new FAPI();
+    window.fapi = fapi;
+    window.ref = ref;
+
+    let loadingMods = JSON.parse(localStorage.getItem("mods") ?? '[]');
+    const results = [];
+    function raw(path) {
+        if (path.includes('githubusercontent')) return path;
+        else return path + '?raw=true';
+    }
+    let index = 0;
+    loadingMods.forEach(([enabled, json]) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", raw(json), false);
+        xhr.send();
+        if (xhr.status !== 200) {
+            loadingMods.splice(index, 1);
+            localStorage.setItem('mods', JSON.stringify(loadingMods)); // `mod.json` не найден
+            return;
+        }
+        const modJson = JSON.parse(xhr.responseText);
+        if (modJson.script === undefined) results.push([modJson, 206]);
+        xhr.open("GET", raw(modJson.script), false);
+        xhr.send();
+        if (xhr.status !== 200) {
+            results.push([modJson, 400]); // `script.js` не найден
+            return;
+        }
+        try {
+            new Function(xhr.responseText).call(undefined);
+            results.push([modJson, 200]) // `script.js` успешно загружен
+        } catch(e) {
+            results.push([modJson, 406, e]) // `script.js` не удалось загрузить из за ошибки
+            console.log(e);
+        }
+        index++;
+    });
+    
+    modPage = new XDLCPage();
+
+    ref('ChunkUpdates', (chunkUpdates) => {
+        // TODO: Заменить `SignalHandler` на `ChunkUpdates`
+        class SignalHandler {
+            /**
+             * Перенос текущих значений стрелочки в старые
+             * @param {Object.<string,any>} arrow Стрелочка
+             */
+            toLast(arrow) {
+                arrow.lastType = arrow.type;
+                arrow.lastSignal = arrow.signal;
+                arrow.lastRotation = arrow.rotation;
+                arrow.lastFlipped = arrow.flipped;
+            }
+            /**
+             * Добавляет единицу к количеству сигналов полученной стрелочки
+             * @param {Object.<string,any> | void} arrow Стрелочка
+             */
+            updateCount(fromArrow, arrow, add=1) {
+                if (arrow !== undefined) {
+                    arrow.signalsCount += add;
+                    if (arrow.tempRefs !== undefined) arrow.tempRefs.push(fromArrow);
+                    else arrow.tempRefs = [fromArrow];
+                }
+            }
+            /**
+             * Блокирует сигнал полученной стрелочки
+             * <br><b>Вызывать не в `transmit` а в `block` иначе не будет никакого эффекта!</b>
+             * @param {Object.<string,any> | void} arrow Стрелочка
+             */
+            blockSignal(arrow) {
+                if (arrow !== undefined) arrow.signal = 0;
+            }
+            /**
+             * Сложный вариант получения стрелочки
+             * @param {Object.<string,any>} chunk - Чанк
+             * @param {number} x Позиция по X
+             * @param {number} y Позиция по Y
+             * @param {number} rotation Поворот стрелочки ( 0 вверх | 1 вправо | 2 вниз | 3 влево )
+             * @param {boolean} flipped Зеркально расположена или нет
+             * @param {number} distance Дистанция от стрелочки ( отрицательное = вперёд | положительное = назад )
+             * @param {number} diagonal Дистанция от стрелочки в сторону ( отрицательное = вправо | положительное = влево )
+             * @return {Object.<string,any> | void} Возвращает стрелочку если находит её, а иначе `null`
+             */
+            getArrowAt(chunk, x, y, rotation, flipped, distance=-1, diagonal=0) {
+                if (flipped) diagonal = -diagonal;
+
+                if (rotation === 0) {
+                    y += distance;
+                    x += diagonal;
+                }
+                else if (rotation === 1) {
+                    y += diagonal;
+                    x -= distance;
+                }
+                else if (rotation === 2) {
+                    y -= distance;
+                    x -= diagonal;
+                }
+                else if (rotation === 3) {
+                    y -= diagonal;
+                    x += distance;
+                }
+
+                let rChunk = chunk;
+                if (x >= modules.CHUNK_SIZE) {
+                    if (y >= modules.CHUNK_SIZE) {
+                        rChunk = chunk.adjacentChunks[3];
+                        x -= modules.CHUNK_SIZE;
+                        y -= modules.CHUNK_SIZE;
+                    }
+                    else if (y < 0) {
+                        rChunk = chunk.adjacentChunks[1];
+                        x -= modules.CHUNK_SIZE;
+                        y += modules.CHUNK_SIZE;
+                    }
+                    else {
+                        rChunk = chunk.adjacentChunks[2];
+                        x -= modules.CHUNK_SIZE;
+                    }
+                }
+                else if (x < 0) {
+                    if (y < 0) {
+                        rChunk = chunk.adjacentChunks[7];
+                        x += modules.CHUNK_SIZE;
+                        y += modules.CHUNK_SIZE;
+                    } else if (y >= modules.CHUNK_SIZE) {
+                        rChunk = chunk.adjacentChunks[5];
+                        x += modules.CHUNK_SIZE;
+                        y -= modules.CHUNK_SIZE;
+                    } else {
+                        rChunk = chunk.adjacentChunks[6];
+                        x += modules.CHUNK_SIZE;
+                    }
+                }
+                else if (y < 0) {
+                    rChunk = chunk.adjacentChunks[0];
+                    y += modules.CHUNK_SIZE;
+                }
+                else if (y >= modules.CHUNK_SIZE) {
+                    rChunk = chunk.adjacentChunks[4];
+                    y -= modules.CHUNK_SIZE;
+                }
+                if (rChunk !== undefined) return rChunk.getArrow(x, y);
+            }
+            /**
+             * Обновление сигналов стрелочек
+             * @param {Object.<string,any>} gameMap Карта
+             * @return {void} Ничего не возвращает
+             */
+            update(gameMap) {
+                const allArrows = [];
+                const specificArrows = [];
+
+                gameMap.chunks.forEach((chunk) => {
+                    chunk.arrows.forEach((arrow) => {
+                        this.toLast(arrow);
+                        const x = arrow.x;
+                        const y = arrow.y;
+                        switch (arrow.type) {
+                            case 0:
+                                return;
+                            case 1: // Стрелочка
+                            case 4: // Стрелочка задержки
+                            case 5: // Передатчик
+                            case 22: // Стрелочка из уровня #1
+                                if (arrow.signal === 1) this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped));
+                                break;
+                            case 2: // Источник
+                            case 9: // Тактовый источник
+                                if (arrow.signal === 1) {
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, 1));
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 1, 0));
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, -1));
+                                }
+                                break;
+                            case 6: // <>
+                                if (arrow.signal === 1) {
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 1, 0));
+                                }
+                                break;
+                            case 7: // ^>
+                                if (arrow.signal === 1) {
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, 1));
+                                }
+                                break;
+                            case 8: // <^>
+                                if (arrow.signal === 1) {
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, 1));
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, -1));
+                                }
+                                break;
+                            case 10: // Синяя стрелочка
+                                if (arrow.signal === 2) this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -2))
+                                break;
+                            case 11: // Диагональная стрелочка
+                                if (arrow.signal === 2) this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 1))
+                                break;
+                            case 12: // Синий курсор
+                                if (arrow.signal === 2) {
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -2, 0));
+                                }
+                                break;
+                            case 13: // Полусиний курсор
+                                if (arrow.signal === 2) {
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -2, 0));
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, 1));
+                                }
+                                break;
+                            case 14: // Синий курсор ЛКМ
+                                if (arrow.signal === 2) {
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 1));
+                                }
+                                break;
+                            case 15: // НЕ
+                            case 16: // И
+                            case 17: // Хуйня какая та
+                            case 18: // Ячейка памяти
+                            case 19: // И + Ячейка памяти
+                                if (arrow.signal === 3) this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped))
+                                break;
+                            case 20: // Рандомизатор
+                            case 24: // Направленная кнопка
+                                if (arrow.signal === 5) this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped));
+                                break;
+                            case 21: // Кнопка
+                                if (arrow.signal === 5) {
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, 1));
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 1, 0));
+                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, -1));
+                                }
+                                break;
+                            case 23: // Стрелочка из уровня #2
+                            case 3: // Блокер
+                                specificArrows.push(arrow)
+                                break;
+                            default:
+                                let marrow = fapi.getArrowByType(arrow.type);
+                                if (marrow !== undefined) marrow.transmit(arrow);
+                                specificArrows.push(arrow)
+                                break;
+                        }
+                        allArrows.push(arrow);
+                    });
+                });
+                allArrows.forEach((arrow) => {
+                    const chunk = arrow.chunk;
+                    const x = arrow.x;
+                    const y = arrow.y;
+                    switch (arrow.type) {
+                        case 1:
+                        case 3:
+                        case 6:
+                        case 7:
+                        case 8:
+                        case 23:
+                            arrow.signal = arrow.signalsCount > 0 ? 1 : 0;
+                            break;
+                        case 2:
+                            arrow.signal = 1;
+                            break;
+                        case 4:
+                            if (arrow.signal === 2) arrow.signal = 1;
+                            else if (arrow.signal === 0 && arrow.signalsCount > 0) arrow.signal = 2;
+                            else if (arrow.signal === 1 && arrow.signalsCount > 0) arrow.signal = 1;
+                            else arrow.signal = 0;
+                            break;
+                        case 5:
+                            arrow.signal = 0;
+                            const backward_arrow = this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 1);
+                            if (backward_arrow !== undefined) arrow.signal = backward_arrow.lastSignal !== 0 ? 1 : 0;
+                            break;
+                        case 9:
+                            if (arrow.signal === 0) arrow.signal = 1;
+                            else if (arrow.signal === 1) arrow.signal = 2;
+                            break;
+                        case 10:
+                        case 11:
+                        case 12:
+                        case 13:
+                        case 14:
+                            arrow.signal = arrow.signalsCount > 0 ? 2 : 0;
+                            break;
+                        case 15:
+                            arrow.signal = arrow.signalsCount > 0 ? 0 : 3;
+                            break;
+                        case 16:
+                            arrow.signal = arrow.signalsCount > 1 ? 3 : 0;
+                            break;
+                        case 17:
+                            arrow.signal = arrow.signalsCount % 2 === 1 ? 3 : 0;
+                            break;
+                        case 18:
+                            if (arrow.signalsCount > 1) arrow.signal = 3;
+                            else if (arrow.signalsCount === 1) arrow.signal = 0;
+                            break;
+                        case 19:
+                            if (arrow.signalsCount > 0) arrow.signal = arrow.signal === 3 ? 0 : 3;
+                            break;
+                        case 20:
+                            arrow.signal = (arrow.signalsCount > 0 && Math.random() < 0.5) ? 5 : 0;
+                            break;
+                        case 21:
+                            arrow.signal = 0;
+                            break;
+                        case 22:
+                            arrow.signal = arrow.signalsCount > 0 ? 1 : 0;
+                            const n = chunk.getLevelArrow(x, y);
+                            if (n !== undefined) n.update();
+                            break;
+                        case 24:
+                            arrow.signal = arrow.signalsCount > 0 ? 5 : 0;
+                            break;
+                        default:
+                            let marrow = fapi.getArrowByType(arrow.type);
+                            if (marrow !== undefined) marrow.update(arrow);
+                            break;
+                    }
+                    arrow.refs = arrow.tempRefs;
+                    arrow.tempRefs = [];
+                    arrow.lastSignalsCount = arrow.signalsCount;
+                    arrow.signalsCount = 0;
+                });
+                specificArrows.forEach((arrow) => {
+                    const chunk = arrow.chunk;
+                    const x = arrow.x;
+                    const y = arrow.y;
+                    if (arrow.type === 3 && arrow.lastSignal === 1)
+                        this.blockSignal(this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped));
+                    else if (arrow.type > 24) {
+                        let marrow = fapi.getArrowByType(arrow.type);
+                        if (marrow !== undefined) marrow.block(arrow);
+                    }
+                });
+                if (!fapi.experimental.updateLevelArrow) return;
+                specificArrows.forEach((arrow) => {
+                    const chunk = arrow.chunk;
+                    chunk.levelArrows.forEach((levelArrow) => {
+                        if (levelArrow.type === 23) levelArrow.update();
+                    });
+                });
+            }
+        }
+        const sh = new SignalHandler();
+        imodules.signalhandler = sh;
+        chunkUpdates.sh = sh;
+        chunkUpdates.toLast = sh.toLast;
+        chunkUpdates.updateCount = sh.updateCount;
+        chunkUpdates.blockSignal = sh.blockSignal;
+        chunkUpdates.getArrowAt = sh.getArrowAt;
+        chunkUpdates.update = sh.update;
+        return chunkUpdates;
+    })
+    ref('PlayerAccess', (playerAccess) => class PlayerAccess extends playerAccess {
+        constructor() {
+            super();
+            fapi.mods.forEach((mod) => {
+                for (var i = 0; i < Object.values(mod.arrows).length; i += 5) {
+                    let group = Object.values(mod.arrows).slice(i, i + 5).map((arrow) => arrow.type);
+                    this.arrowGroups.push(group);
+                }
+            });
+            imodules.playeraccess = this;
+        }
+    });
+    ref('UIToolbarItem', (uiToolbarItem) => class UIToolbarItem extends uiToolbarItem {
+        setImage(id) {
+            if (id < 24) this.image.src = `res/sprites/arrow${id + 1}.png?v=${modules.PlayerSettings.version}`
+            else {
+                const marrow = fapi.getArrowByType(id + 1);
+                if (marrow !== undefined) this.image.src = marrow.icon_url;
+            }
+        }
+    });
+    ref('UIInventory', (uiInventory) => class UIInventory extends uiInventory {
+        addArrows(e) {
+            this.arrows = [];
+            this.arrowGroups = e;
+            this.itemsBlock.remove();
+            this.itemsBlock = document.createElement("div");
+            this.itemsBlock.className = "ui-inventory-items";
+            this.dialog.appendChild(this.itemsBlock);
+            for (let t = 0; t < e.length; t++) {
+                const s = e[t];
+                const n = document.createElement("div");
+                n.className = "ui-inventory-line";
+                n.style.gridArea = `${t % 12 + 1} / ${~~(t / 12) + 1}`;
+                this.itemsBlock.appendChild(n);
+                this.arrows.push([]);
+                for (let e = 0; e < s.length; e++) {
+                    const o = document.createElement("div");
+                    o.className = "inventory-item";
+                    o.onclick = () => this.selectCallback(s[e]);
+                    n.appendChild(o);
+                    const a = document.createElement("img");
+                    if (s[e] <= fapi.BASIC_TYPES) a.src = `/res/sprites/arrow${s[e]}.png?v=${modules.PlayerSettings.version}`;
+                    else {
+                        const marrow = fapi.getArrowByType(s[e]);
+                        if (marrow !== undefined) a.src = marrow.icon_url;
+                    }
+                    o.appendChild(a);
+                    this.arrows[t].push(o);
+                }
+            }
+            this.itemsBlock.style.display = 'grid';
+        }
+    });
+    ref('UIArrowInfo', (uiArrowInfo) => class UIArrowInfo extends uiArrowInfo {
+        constructor(e, t) {
+            super(e, t);
+            this.image = this.element.querySelector('.ui-arrow-info-image');
+            if (t <= fapi.BASIC_TYPES) this.image.src = `res/sprites/arrow${t}.png?v=${modules.PlayerSettings.version}`
+            else {
+                const marrow = fapi.getArrowByType(t);
+                if (marrow !== undefined) this.image.src = marrow.icon_url;
+            }
+        }
+    });
+    ref('Render', (render) => class Render extends render {
+        constructor(e) {
+            super(e);
+            imodules.render = this;
+            // region patch_atlas
+            if (modules.PlayerSettings.patched) return;
+            console.log('Atlas patching...');
+            const images = [[1, modules.PlayerSettings.arrowAtlasImage.src]];
+            fapi.mods.forEach((mod) => {
+                Object.values(mod.arrows).forEach((arrow) => {
+                    if (arrow.textures === undefined) arrow.textures = [arrow.icon_url];
+                    if (arrow.textures.length > 6) console.warn(`Arrow with id \`${arrow.id}\` from mod \`${arrow.mod.name}\` uses \`${arrow.textures.length}\` textures for draw`);
+                    arrow.textures.forEach((texture) => images.push([fapi.MAX_TEXTURE_INDEX++, texture]));
+                });
+            });
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const created = [];
+            canvas.width = 4096;
+            canvas.height = 4096;
+            let loaded = 0;
+            images.forEach(([index, src]) => {
+                let x = 0;
+                let y = 0;
+                index -= 1;
+                if (index < 128) {
+                    x = index % 8;
+                    y = ~~(index / 8);
+                } else {
+                    x = (index - 128) % 8 + 8;
+                    y = ~~((index - 128) / 16);
+                }
+                const img = new Image();
+                created.push(img);
+                img.src = src;
+                img.crossOrigin = '*';
+                img.onload = () => {
+                    ctx.drawImage(img, x * 256, y * 256);
+                    loaded++;
+                    if (loaded !== images.length) return;
+                    game.PlayerSettings.arrowAtlasImage = new Image;
+                    game.PlayerSettings.arrowAtlasImage.src = canvas.toDataURL('image/png');
+                    game.PlayerSettings.arrowAtlasImage.onload = () => {
+                        this.createArrowTexture(game.PlayerSettings.arrowAtlasImage);
+                        imodules.game.screenUpdated = true;
+                        modules.PlayerSettings.patched = true;
+                        console.log('Atlas patched!');
+                    }
+                    created.forEach((img) => img.remove());
+                }
+            })
+            // endregion
+        }
+        drawArrow(e, t, s, i, n, o, arrow) {
+            s -= 1;
+            if (arrow.type > fapi.BASIC_TYPES) s = fapi.getArrowByType(arrow.type).draw(arrow, s);
+            if (s === -1) return;
+            if (this.lastArrowType !== s) {
+                let x;
+                let y;
+                if (s < 128) {
+                    x = s % 8;
+                    y = ~~(s / 8);
+                } else {
+                    x = (s - 128) % 8 + 8;
+                    y = ~~((s - 128) / 16);
+                }
+                // TODO: Проверить работу 256 текстур
+                this.gl.uniform2f(this.arrowShader.getSpritePositionUniform(), x / 16, y / 16);
+                this.lastArrowType = s;
+            }
+            if (this.lastArrowSignal !== i) {
+                this.gl.uniform1i(this.arrowShader.getSignalUniform(), i);
+                this.lastArrowSignal = i;
+            }
+            if (this.lastArrowRotation !== n || this.lastArrowFlipped !== o) {
+                this.gl.uniform2f(this.arrowShader.getRotationUniform(), n / 2 * Math.PI, o ? 1 : 0);
+                this.lastArrowRotation = n;
+                this.lastArrowFlipped = o;
+            }
+            this.gl.uniform2f(this.arrowShader.getPositionUniform(), e, t);
+            this.gl.drawElements(this.gl.TRIANGLES, 6, this.gl.UNSIGNED_SHORT, 0);
+        }
+        prepareArrows(e) {
+            this.gl.useProgram(this.arrowShader.getProgram());
+            this.gl.bindTexture(this.gl.TEXTURE_2D, this.arrowAtlas);
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
+            this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+            this.gl.enableVertexAttribArray(this.arrowShader.getPositionAttribute());
+            this.gl.vertexAttribPointer(this.arrowShader.getPositionAttribute(), 2, this.gl.FLOAT, !1, 0, 0);
+            this.gl.uniform2f(this.arrowShader.getResolutionUniform(), this.gl.canvas.width, this.gl.canvas.height);
+            this.gl.uniform1f(this.arrowShader.getSizeUniform(), e);
+            this.gl.uniform1f(this.arrowShader.getSpriteSizeUniform(), 1 / 16);
+        }
+    });
+    ref('PlayerControls', (playerControls) => class PlayerControls extends playerControls {
+        constructor(e, t, s, i) {
+            super(e, t, s, i);
+            const pLCC = this.leftClickCallback;
+            this.leftClickCallback = () => {
+                pLCC();
+                const arrow = this.getArrowByMousePosition();
+                const shiftPressed = this.keyboardHandler.getShiftPressed();
+
+                if (arrow !== undefined && imodules.playercontrols.freeCursor) {
+                    if (arrow.type > 24) {
+                        let marrow = fapi.getArrowByType(arrow.type);
+                        if (marrow !== undefined && marrow.clickable) marrow.click(arrow, shiftPressed);
+                    }
+                }
+            }
+            this.mouseHandler.leftClickCallback = this.leftClickCallback;
+            const pKDC = this.keyDownCallback;
+            this.keyDownCallback = (e, t) => {
+                if (imodules.modalhandler.openedAnyModal()) return;
+                // TODO: Возможность подписаться на ивент
+                pKDC(e, t);
+            }
+            this.keyboardHandler.keyDownCallback = this.keyDownCallback;
+            imodules.playercontrols = this;
+        }
+        update() {
+            if (imodules.playercontrols.keyboardHandler.getKeyPressed('Escape') && imodules.modalhandler.closeModal()) return;
+            else if (imodules.modalhandler.openedAnyModal()) return document.body.style.cursor = 'default';
+            super.update();
+            const arrow = imodules.playercontrols.getArrowByMousePosition();
+            if (arrow !== undefined && arrow.type > 24) {
+                let marrow = fapi.getArrowByType(arrow.type);
+                if (marrow !== undefined) {
+                    document.body.style.cursor = marrow.clickable || marrow.pressable ? 'pointer' : 'default';
+                    const shiftPressed = this.keyboardHandler.getShiftPressed();
+                    if (marrow.pressable && this.mouseHandler.getMousePressed()) marrow.press(arrow, shiftPressed);
+                }
+            }
+        }
+        pickArrow() {
+            if (!imodules.playeraccess.canPick) return;
+            super.pickArrow();
+            const e = this.getArrowByMousePosition();
+            if (e !== undefined && e.custom_data !== undefined) this.activeCustomData = e.custom_data.slice(0);
+            else this.activeCustomData = -1;
+        }
+        setArrows(e, t) {
+            if (!imodules.playeraccess.canSetArrows) return;
+            super.setArrows(e, t);
+            imodules.selectedmap.getCopiedArrows().forEach(((s, i) => {
+                    if (modules.PlayerSettings.levelArrows.includes(s.type)) return;
+                    const [n, o] = i.split(",").map((e) => parseInt(e, 10));
+                    const x = e + n;
+                    const y = t + o;
+                    if (imodules.playercontrols.activeCustomData !== -1 && imodules.playercontrols.activeCustomData !== undefined)
+                        imodules.gamemap.setArrowCustomData(x, y, imodules.playercontrols.activeCustomData);
+                    else imodules.gamemap.setArrowCustomData(x, y, s.custom_data);
+                }
+            ));
+        }
+    });
+    ref('PlayerUI', (playerUI) => class PlayerUI extends playerUI {
+        isMenuOpen() {
+            return null !== this.menu && !this.menu.getIsRemoved() || imodules.modalhandler.openedAnyModal();
+        }
+    });
+    ref('GameMap', (gameMap) => class GameMap extends gameMap {
+        constructor() {
+            super();
+            if (imodules.gamemap !== undefined) return;
+            imodules.gamemap = this;
+        }
+        setArrowCustomData(x, y, custom_data) {
+            if (custom_data === undefined) custom_data = [];
+            const chunk = this.getChunkByArrowCoordinates(x, y);
+            if (chunk === undefined) return;
+            const ax = x - chunk.x * modules.CHUNK_SIZE;
+            const ay = y - chunk.y * modules.CHUNK_SIZE;
+            const arrow = chunk.getArrow(ax, ay);
+            if (arrow !== undefined) {
+                arrow.refs = [];
+                arrow.lastRefs = [];
+                arrow.chunk = chunk;
+                arrow.x = ax;
+                arrow.y = ay;
+                if (!arrow.canBeEdited) return;
+                else if (modules.PlayerSettings.levelArrows.includes(arrow.type)) return;
+                arrow.custom_data = custom_data.slice(0);
+            }
+        }
+    });
+    ref('SelectedMap', (selectedMap) => class SelectedMap extends selectedMap {
+        constructor() {
+            super();
+            imodules.selectedmap = this;
+        }
+        setArrow(type) {
+            super.setArrow(type);
+            let marrow = fapi.getArrowByType(type);
+            if (marrow === undefined) return;
+            imodules.playercontrols.activeCustomData = marrow.custom_data.slice(0);
+        }
+        copyFromGameMap(gameMap) {
+            this.rotationState = 0;
+            this.flipState = false;
+            this.arrowsToPutOriginal.clear();
+            this.arrowsToPut.clear();
+
+            let t = Number.MAX_SAFE_INTEGER
+            let s = Number.MAX_SAFE_INTEGER;
+            this.tempMap.clear(),
+            this.selectedArrows.forEach((sarrow) => {
+                    const [n, o] = sarrow.split(",").map((e => parseInt(e, 10)));
+                    const arrow = gameMap.getArrow(n, o);
+                    if (arrow !== undefined && arrow.canBeEdited) {
+                        t = Math.min(t, n);
+                        s = Math.min(s, o);
+                    }
+                }
+            );
+            this.selectedArrows.forEach((sarrow) => {
+                    const [n, o] = sarrow.split(",").map((e=>parseInt(e, 10)));
+                    const a = n - t;
+                    const r = o - s;
+                    const arrow = gameMap.getArrow(n, o);
+                    if (arrow !== undefined && arrow.canBeEdited) {
+                        this.tempMap.setArrowType(a, r, arrow.type);
+                        this.tempMap.setArrowRotation(a, r, arrow.rotation);
+                        this.tempMap.setArrowFlipped(a, r, arrow.flipped);
+                        this.tempMap.setArrowCustomData(this.tempMap, a, r, arrow.custom_data);
+                    }
+                }
+            );
+            const i = (0, modules.save)(this.tempMap);
+            return modules.Utils.arrayBufferToBase64(i);
+        }
+    });
+    ref('save', (save) => function(gameMap) {
+        const data = [];
+        let useMods = false;
+        gameMap.chunks.forEach((chunk) => {
+            const types = chunk.getArrowTypes()
+            types.forEach((type) => {
+                if (type > 24) useMods = true;
+            });
         });
-        window.document.close();
-        window.document.open();
-        window.document.write(`<head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="google" content="notranslate"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="color-scheme" content="light only"><title>X Arrows</title><link rel="icon" type="image/x-icon" href="res/favicon.png"><link rel="stylesheet" href="style.css"></head><body><div id="root"></div><script src="${chrome.runtime.getURL('modified_bundle.js')}" async></script><script src="${chrome.runtime.getURL('fapi.js')}" async></script></body>`);
-    }
-    try {
-        inject();
-        // alert("DLC Injected");
-    } catch (e) {
-        console.error(e);
-        // alert("DLC Injection failed");
-    }
+        const savedModsOrder = [];
+        if (useMods) {
+            data.push(255); // Конец обозначений модов
+            fapi.mods.forEach((mod) => {
+                if (data.length !== 1) data.push(254);
+                mod.idname.split('').forEach((symbol) => {
+                    data.push(fapi.ID_SYMBOLS.indexOf(symbol));
+                });
+                savedModsOrder.push(mod);
+            });
+            data.push(255); // Конец обозначений модов
+        }
+        data.push(0, 0); // ВЕРСИЯ ИГРЫ ( ПОКА ЧТО НЕ МЕНЯЕТСЯ )
+        data.push(255 & gameMap.chunks.size, gameMap.chunks.size >> 8 & 255);
+        gameMap.chunks.forEach((chunk) => {
+            const types = chunk.getArrowTypes();
+            const x = [255 & Math.abs(chunk.x), Math.abs(chunk.x) >> 8 & 255];
+            const y = [255 & Math.abs(chunk.y), Math.abs(chunk.y) >> 8 & 255];
+            chunk.x < 0 ? x[1] |= 128 : x[1] &= 127;
+            chunk.y < 0 ? y[1] |= 128 : y[1] &= 127;
+            data.push(...x);
+            data.push(...y);
+            data.push(types.length - 1);
+            types.forEach((arrowType) => {
+                const isFromMod = arrowType > 24;
+                if (useMods && isFromMod) {
+                    data.push(255); // Обозначение что это стрелочка из мода
+                    let marrow = fapi.getArrowByType(arrowType);
+                    data.push(marrow.id); // Айди стрелочки из мода
+                    data.push(savedModsOrder.indexOf(marrow.mod)); // Индекс мода из `обозначения модов`
+                }
+                else data.push(arrowType);
+                data.push(0);
+                const n = data.length - 1;
+                let o = 0;
+                for (let x = 0; x < modules.CHUNK_SIZE; x++) {
+                    for (let y = 0; y < modules.CHUNK_SIZE; y++) {
+                        const arrow = chunk.getArrow(x, y);
+                        if (arrow.type === arrowType) {
+                            const e = x | y << 4;
+                            const s = arrow.rotation | (arrow.flipped ? 1 : 0) << 2;
+                            data.push(e);
+                            data.push(s);
+                            if (useMods && isFromMod) {
+                                if (arrow.custom_data === undefined) arrow.custom_data = [];
+                                data.push(arrow.custom_data.length); // Длина данных стрелочки
+                                data.push(...fapi.getArrowByType(arrow.type).save_cd(arrow)); // Данные стрелочки
+                            }
+                            o++;
+                        }
+                    }
+                }
+                data[n] = o - 1;
+            });
+        })
+        return data;
+    });
+    ref('load', (load) => function(gameMap, data) {
+        if (data.length < 4) return;
+        const modLoading = data[0] === 255;
+        if (modLoading) console.log('Modded load')
+
+        let s = 0;
+        let si;
+        if (modLoading) {
+            s++;
+            si = data[s++];
+        }
+        let modsDefine = [];
+        let unknownMods = [];
+        let modDefine = '';
+
+        if (modLoading) {
+            while (si !== 255) {
+                if (si === 254) {
+                    let mod = fapi.getModByIdName(modDefine);
+                    if (mod === undefined) unknownMods.push(modDefine);
+                    modsDefine.push(mod);
+                    modDefine = '';
+                    si = data[s++];
+                    continue;
+                }
+                modDefine += fapi.ID_SYMBOLS[si];
+                si = data[s++];
+            }
+            if (modDefine !== '') {
+                let mod = fapi.getModByIdName(modDefine)
+                if (mod === undefined) unknownMods.push(modDefine);
+                modsDefine.push(mod);
+            }
+            if (unknownMods.length !== 0) {
+                let text = 'Невозможно загрузить карту, отстутствуют данные моды:\n';
+                unknownMods.forEach((mod) => {
+                    text += mod + '\n';
+                });
+                text += 'Желательно выйти с карты чтобы не перезаписать её 💀';
+                alert(text);
+                // window.open('https://logic-arrows.io/maps');
+                // window.close();
+                throw new Error('Unknown mods');
+            }
+        }
+
+        let version = data[s++];
+        version |= data[s++] << 8
+        if (version !== 0) throw new Error("Unsupported save version");
+
+        let chunks_count = data[s++] | data[s++] << 8;
+        for (let _ = 0; _ < chunks_count; _++) {
+                let x = data[s++];
+                x |= (127 & data[s++]) << 8;
+                if ((data[s - 1] & 128) !== 0) x = -x;
+
+                let y = data[s++];
+                y |= (127 & data[s++]) << 8;
+                if ((data[s - 1] & 128) !== 0) y = -y;
+
+                const arrows_count = data[s++] + 1;
+                const chunk = gameMap.getOrCreateChunk(x, y)
+                for (let _ = 0; _ < arrows_count; _++) {
+                    let type = data[s++];
+                    let modArrow = type === 255;
+                    let mod;
+                    let marrow;
+                    if (modArrow) {
+                        type = data[s++];
+                        mod = modsDefine[data[s++]];
+                        marrow = mod.arrows[type];
+                        type = marrow.type;
+                    }
+                    const count = data[s++] + 1;
+                    for (let adata = 0; adata < count; adata++) {
+                        const i = data[s++];
+                        const n = data[s++];
+                        const x = 15 & i;
+                        const y = i >> 4;
+                        const arrow = chunk.getArrow(x, y);
+                        if (modArrow) {
+                            let cdcount = data[s++];
+                            let cd = []
+                            for (let _ = 0; _ < cdcount; _++) cd.push(data[s++]);
+                            arrow.custom_data = fapi.getArrowByType(type).load_cd(cd);
+                        }
+                        arrow.refs = [];
+                        arrow.lastRefs = [];
+                        arrow.chunk = chunk;
+                        arrow.x = x;
+                        arrow.y = y;
+                        arrow.type = type;
+                        arrow.rotation = 3 & n;
+                        arrow.flipped = 0 !== (4 & n);
+                    }
+                }
+            }
+    });
+    ref('ArrowDescriptions', (arrowDescriptions) => {
+        const pgan = arrowDescriptions.getArrowName;
+        const pgaa = arrowDescriptions.getArrowActivation;
+        const pgad = arrowDescriptions.getArrowAction;
+        arrowDescriptions.getArrowsCount = () => fapi.MAX_TYPE;
+        arrowDescriptions.getArrowName = (type) => {
+            if (type <= fapi.BASIC_TYPES) return pgan(type);
+            const index = modules.LangSettings.languages.indexOf(modules.LangSettings.getLanguage());
+            return fapi.getArrowByType(type).name[index];
+        };
+        arrowDescriptions.getArrowActivation = (type) => {
+            if (type <= fapi.BASIC_TYPES) return pgaa(type);
+            const index = modules.LangSettings.languages.indexOf(modules.LangSettings.getLanguage());
+            return fapi.getArrowByType(type).activation[index];
+        };
+        arrowDescriptions.getArrowAction = (type) => {
+            if (type <= fapi.BASIC_TYPES) return pgad(type);
+            const index = modules.LangSettings.languages.indexOf(modules.LangSettings.getLanguage());
+            return fapi.getArrowByType(type).action[index];
+        };
+        return arrowDescriptions;
+    });
+    ref('Navigation', (navigation) => {
+        class ModPageContent extends modules.Page {
+            constructor(e) {
+                super(e);
+                this.mainDiv.style.height = '100%';
+            }
+            getClass() {
+                return "modpage"
+            }
+        }
+
+        class Navigation extends navigation {
+            constructor() {
+                super();
+                imodules.navigation = this;
+            }
+            goToPath(action) {
+                const regex = /modpage-([\w._]+)/;
+                const match = window.location.pathname.match(regex);
+                if (match) {
+                    const id = match[1];
+                    imodules.navigation.goToModPage(id, action);
+                    return;
+                }
+                super.goToPath(action);
+            }
+            goToModPage(id, action) {
+                if (imodules.menupage !== undefined) {
+                    if (imodules.menupage.page !== undefined) imodules.menupage.page.dispose();
+                }
+                else {
+                    this.removePages();
+                    this.menuPage = imodules.menupage = new modules.MenuPage(`modpage-${id}`, this.doMenuAction);
+                }
+                document.title = `Моды | Стрелочки`;
+                imodules.menupage.page = new ModPageContent(imodules.menupage.getContent());
+                if (action === 'go') window.history.pushState(null, '', `modpage-${id}`);
+                else if (action === 'start') window.history.replaceState(null, '', `modpage-${id}`);
+                if (fapi.pages[id] !== undefined) fapi.pages[id].draw(imodules.menupage.page.mainDiv);
+                this.modPage = fapi.pages[id];
+                imodules.menupage.selectedCategory = `modpage-${id}`;
+                imodules.menupage.updateSelectedCategory();
+            }
+            tryCloseModPage() {
+                if (this.modPage === undefined) return;
+                this.modPage.close();
+                this.modPage = undefined;
+            }
+        }
+        return Navigation;
+    })
+    ref('MenuPage', (menuPage) => class MenuPage extends menuPage {
+        constructor(e, t) {
+            super(e, t);
+            imodules.menupage = this;
+            Object.entries(fapi.pages).forEach(([idname, page]) => {
+                const index = modules.LangSettings.languages.indexOf(modules.LangSettings.getLanguage());
+                imodules.menupage.categories.set('modpage-' + idname, [page.translates[index], page.icon_url, null]);
+                const psc = imodules.menupage.selectedCategory;
+                imodules.menupage.addMenuItem('modpage-' + idname);
+                imodules.menupage.selectedCategory = psc;
+            })
+            const pa = this.action;
+            this.action = (e) => {
+                imodules.navigation.tryCloseModPage();
+                const regex = /modpage-([\w._]+)/;
+                const match = e.match(regex);
+                if (match) {
+                    const id = match[1];
+                    imodules.navigation.goToModPage(id, 'go');
+                    return;
+                }
+                pa(e);
+            }
+        }
+    })
+    ref('PlayerSettings', (playerSettings) => {
+        playerSettings.patched = false;
+        return playerSettings;
+    })
+    ref('Game', (game) => class Game extends game {
+        constructor(e, t, s) {
+            super(e, t, s);
+            imodules.game = this;
+        }
+        draw() {
+            if (imodules.render === undefined || modules.PlayerSettings.patched === undefined || modules.PlayerSettings.patched === false) return;
+            this.updateFocus(),
+            (this.drawPastedArrows || 0 !== this.selectedMap.getSelectedArrows().length) && (this.screenUpdated = !0),
+            modules.PlayerSettings.framesToUpdate[this.updateSpeedLevel] > 1 && (this.screenUpdated = !0),
+            this.screenUpdated && this.render.drawBackground(this.scale, [-this.offset[0] / modules.CELL_SIZE, -this.offset[1] / modules.CELL_SIZE]);
+            const e = this.scale;
+            this.render.prepareArrows(e);
+            const t = ~~(-this.offset[0] / modules.CELL_SIZE / 16) - 1
+              , s = ~~(-this.offset[1] / modules.CELL_SIZE / 16) - 1
+              , o = ~~(-this.offset[0] / modules.CELL_SIZE / 16 + this.width / this.scale / 16)
+              , a = ~~(-this.offset[1] / modules.CELL_SIZE / 16 + this.height / this.scale / 16);
+            if (this.render.setArrowAlpha(1),
+            this.gameMap.chunks.forEach((e=>{
+                if (!(e.x >= t && e.x <= o && e.y >= s && e.y <= a))
+                    return;
+                const r = this.offset[0] * this.scale / modules.CELL_SIZE + .025 * this.scale
+                  , l = this.offset[1] * this.scale / modules.CELL_SIZE + .025 * this.scale;
+                for (let t = 0; t < modules.CHUNK_SIZE; t++)
+                    for (let s = 0; s < modules.CHUNK_SIZE; s++) {
+                        const o = e.getArrow(t, s);
+                        if (o.type > 0 && (this.screenUpdated || modules.ChunkUpdates.wasArrowChanged(o))) {
+                            const i = (e.x * modules.CHUNK_SIZE + t) * this.scale + r
+                              , a = (e.y * modules.CHUNK_SIZE + s) * this.scale + l;
+                            this.render.drawArrow(i, a, o.type, o.signal, o.rotation, o.flipped, o)
+                        }
+                    }
+            }
+            )),
+            performance.now() - this.drawTime > 1e3 && (this.drawTime = performance.now(),
+            this.drawsPerSecond = 0),
+            this.drawsPerSecond++,
+            this.drawPastedArrows) {
+                this.render.setArrowAlpha(.5);
+                const e = this.selectedMap.getCopiedArrows();
+                0 !== e.size && (this.screenUpdated = !0),
+                e.forEach(((e,t)=>{
+                    const [s,i] = t.split(",").map((e=>parseInt(e, 10)));
+                    let o = s
+                      , a = i
+                      , r = 0;
+                    1 === this.pasteDirection ? (o = -i,
+                    a = s,
+                    r = 1) : 2 === this.pasteDirection ? (o = -s,
+                    a = -i,
+                    r = 2) : 3 === this.pasteDirection && (o = i,
+                    a = -s,
+                    r = 3);
+                    const l = (o + this.mousePosition[0]) * this.scale + this.offset[0] * this.scale / modules.CELL_SIZE + .025 * this.scale
+                      , h = (a + this.mousePosition[1]) * this.scale + this.offset[1] * this.scale / modules.CELL_SIZE + .025 * this.scale;
+                    this.render.drawArrow(l, h, e.type, e.signal, (e.rotation + r) % 4, e.flipped, e)
+                }
+                ))
+            }
+            if (this.render.disableArrows(),
+            this.render.prepareSolidColor(),
+            this.render.setSolidColor(.25, .5, 1, .25),
+            this.selectedMap.getSelectedArrows().forEach((e=>{
+                const t = e.split(",").map((e=>parseInt(e, 10)))
+                  , s = t[0] * this.scale + this.offset[0] * this.scale / modules.CELL_SIZE
+                  , i = t[1] * this.scale + this.offset[1] * this.scale / modules.CELL_SIZE
+                  , o = this.scale + .05 * this.scale;
+                this.render.drawSolidColor(s, i, o, o)
+            }
+            )),
+            this.isSelecting) {
+                this.render.prepareSolidColor(),
+                this.render.setSolidColor(.5, .5, .75, .25);
+                const e = this.selectedMap.getCurrentSelectedArea();
+                if (void 0 !== e) {
+                    const t = e[0] * this.scale + this.offset[0] * this.scale / modules.CELL_SIZE
+                      , s = e[1] * this.scale + this.offset[1] * this.scale / modules.CELL_SIZE
+                      , i = e[2] - e[0]
+                      , o = e[3] - e[1];
+                    this.render.drawSolidColor(t, s, i * this.scale, o * this.scale)
+                }
+            }
+            this.render.disableSolidColor(),
+            this.screenUpdated = !1,
+            this.frame++
+        }
+    });
 })();

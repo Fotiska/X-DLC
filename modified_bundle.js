@@ -5927,7 +5927,7 @@
                             credentials: "include"
                         }).then((t=>{
                             e(t.status),
-                            401 === t.status && (window.location.href = "/login")
+                            401 === t.status && (window.location.hrefgoToPath = "/login")
                         }
                         ))
                     }
