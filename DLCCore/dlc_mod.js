@@ -1,8 +1,6 @@
 // Defines
 const SYMBOLS = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!?\"\`\'#()[].,_- \n'.split('');
 const FAPI = window.fapi;
-const ChunkUpdates = FAPI.modules.ChunkUpdates;
-const ModalHandler = FAPI.imodules.ModalHandler;
 
 const mod = FAPI.registerMod('fotis.dlc_core');
 
@@ -24,14 +22,14 @@ rgb_lamp.update = (arrow) => {
 }
 rgb_lamp.transmit = (arrow) => {
     let [color, activation, transmit] = arrow.custom_data;
-    if (arrow.signal !== 0 && transmit === 1) ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 0));
+    if (arrow.signal !== 0 && transmit === 1) FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 0));
 }
 rgb_lamp.click = (arrow) => {
     const COLORS = ['Радужный ( от кол-ва сигналов )', 'Красный', 'Синий', 'Жёлтый', 'Зелёный', 'Оранжевый', 'Фиолетовый', 'Чёрный'];
     const ACTIVATION = ['При сигнале', 'Всегда ( можно блокировать )', 'При отсутствии сигнала'];
     const TRANSMIT = ['Нет', 'Следующей стрелочке'];
 
-    const modal = ModalHandler.showModal();
+    const modal = FAPI.imodules.ModalHandler.showModal();
     const colorSelect = modal.createSelect('Цвет', COLORS)
     colorSelect.value = COLORS[arrow.custom_data[0]];
     colorSelect.onchange = () => arrow.custom_data[0] = COLORS.indexOf(colorSelect.value);
@@ -60,6 +58,7 @@ const purple_arrow = mod.registerArrow(1)
 purple_arrow.name = ['Purple arrow','Фиолетовая стрелка','Фіолетова стрілка','Фіялетавая стрэлка'];
 purple_arrow.activation = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
 purple_arrow.action = ["Sends a signal forwards, skipping `n` cells.","Передает сигнал вперед через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
+purple_arrow.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/purple_arrow.png";
 purple_arrow.textures = ["https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/purple_arrow.png", "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/purple_diagonal_arrow.png"];
 purple_arrow.clickable = true;
 purple_arrow.update = (arrow) => {
@@ -67,10 +66,10 @@ purple_arrow.update = (arrow) => {
     else arrow.signal = 0;
 }
 purple_arrow.transmit = (arrow) => {
-    if (arrow.signal === 5) ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -arrow.custom_data[0], arrow.custom_data[1]));
+    if (arrow.signal === 5) FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -arrow.custom_data[0], arrow.custom_data[1]));
 }
 purple_arrow.click = (arrow) => {
-    const modal = ModalHandler.showModal();
+    const modal = FAPI.imodules.ModalHandler.showModal();
     const xSelect = modal.createInput('Вперёд', 'От 0 до 15')
     xSelect.value = arrow.custom_data[0];
     xSelect.onchange = () => arrow.custom_data[0] = Math.max(0, Math.min(15, xSelect.value));
@@ -80,7 +79,7 @@ purple_arrow.click = (arrow) => {
     ySelect.onchange = () => arrow.custom_data[1] = Math.max(0, Math.min(15, ySelect.value));
 }
 purple_arrow.draw = (arrow, index) => {
-    if (arrow.custom_data[1] !== 0) return index + 1;
+    if (arrow.custom_data !== undefined && arrow.custom_data[1] !== 0) return index + 1;
     return index;
 }
 purple_arrow.load_cd = (cd) => {
@@ -115,7 +114,7 @@ text_block.action =["Sends a signal diagonally, skipping `n` cells.","Перед
 text_block.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/text_block.png";
 purple_arrow.clickable = true;
 purple_arrow.click = (arrow) => {
-    const modal = ModalHandler.showModal();
+    const modal = FAPI.imodules.ModalHandler.showModal();
     const textArea = modal.createTextArea('Текст', 'Введите текст')
     textArea.value = seq2text(arrow.custom_data);
     textArea.onchange = () => arrow.custom_data = text2seq(textArea.value);
@@ -131,11 +130,11 @@ button.pressable = true;
 button.update = (arrow) => arrow.signal = 0;
 button.press = (arrow, is_shift) => {
     arrow.signal = 5;
-    ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 0));
-    ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 1, 0));
-    ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, -1));
-    ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, 1));
+    FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 0));
+    FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 1, 0));
+    FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, -1));
+    FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, 1));
 }
 // endregion
 
-// TODO: Рандомайзер с настраиваемым рандомом 
+// TODO: Рандомайзер с настраиваемым рандомом

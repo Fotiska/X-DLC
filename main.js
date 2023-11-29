@@ -390,7 +390,7 @@
                     if (modJson.author === undefined) modJson.author = 'Unknown';
                     if (modJson.icon === undefined) modJson.icon = 'Unknown';
                     if (modJson.dependencies === undefined) modJson.dependencies = [];
-
+                    console.log(modJson);
                     if (modJson.id === undefined) modJson = false;
                     else if (modJson.script === undefined) modJson = false;
                 } catch {
