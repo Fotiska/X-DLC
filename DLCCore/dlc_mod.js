@@ -1,56 +1,12 @@
-diagonalSplit1 = mod.registerArrow(0);
-diagonalSplit1.name = ["Diagonal splitter", "Диагональный разветвлитель", ".", "."];
-diagonalSplit1.activation = ["On any incoming signal.", "Любым входящим сигналом.", ".", "."];
-diagonalSplit1.action = ["Sends a signal to the left upper corner, and right upper corner.", "Передаёт сигнал в левый верхний угол, и правый верхний угол.", ".", "."];
-diagonalSplit1.icon_url = "https://raw.githubusercontent.com/w1zlm/Anything/main/arrow1.png";
-diagonalSplit1.update = (arrow) => {
-    if (arrow.signalsCount > 0) arrow.signal = 2;
-    else arrow.signal = 0;
-}
-diagonalSplit1.transmit = (arrow) => {
-    if (arrow.signal === 2) {
-        ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 1));
-        ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, -1));
-    }
-}
-
-
-colors = ['Красный', 'Синий', 'Жёлтый', 'Зелёный', 'Оранжевый', 'Фиолетовый', 'Чёрный'];
-colorDetector = mod.registerArrow(11);
-colorDetector.name = ["Color Detector", "Цветовой Детектор", ".", "."];
-colorDetector.activation = ["If the arrow behind has a signal of the Color you selected.", "Если стрелка позади имеет сигнал выбранного вами цвета.", ".", "."];
-colorDetector.action = ["Sends signal forward.", "Передает сигнал вперёд.", ".", "."];
-colorDetector.icon_url = "https://raw.githubusercontent.com/w1zlm/Anything/main/arrow12.png";
-colorDetector.clickable = true;
-colorDetector.update = (arrow) => {
-    arrow.signal = 0;
-    const backward_arrow = ChunkUpdates.getArrowAt(arrow, arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 1, 0);
-    if (backward_arrow !== undefined) arrow.signal = backward_arrow.lastSignal === arrow.custom_data[0] + 1 ? arrow.custom_data[0] + 1 : 0;
-};
-colorDetector.transmit = (arrow) => {
-    if (arrow.signal === arrow.custom_data[0] + 1) {
-        ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1));
-    }
-}
-colorDetector.click = (arrow, is_shift) => {
-    const color = arrow.custom_data[0];
-    const colorModal = ModalHandler.showModal()
-    const selectColor = colorModal.createSelect('Цвет', colors);
-    selectColor.value = colors[color];
-    selectColor.onchange = () => {
-        arrow.custom_data[0] = colors.indexOf(selectColor.value);
-    }
-};
-colorDetector.custom_data = [1];
-
 // Defines
+const SYMBOLS = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!?\"\`\'#()[].,_- \n'.split('');
 const FAPI = window.fapi;
 const ChunkUpdates = FAPI.modules.ChunkUpdates;
 const ModalHandler = FAPI.imodules.ModalHandler;
 
 const mod = FAPI.registerMod('fotis.dlc_core');
 
-// region RGB_Lamp
+// region RGB_LAMP
 const rgb_lamp = mod.registerArrow(0)
 rgb_lamp.name = ['RGB lamp','Разноцветная лампочка','Різнобарвна лампочка','Рознакаляровая лямпа'];
 rgb_lamp.activation = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
@@ -71,7 +27,22 @@ rgb_lamp.transmit = (arrow) => {
     if (arrow.signal !== 0 && transmit === 1) ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 0));
 }
 rgb_lamp.click = (arrow) => {
+    const COLORS = ['Радужный ( от кол-ва сигналов )', 'Красный', 'Синий', 'Жёлтый', 'Зелёный', 'Оранжевый', 'Фиолетовый', 'Чёрный'];
+    const ACTIVATION = ['При сигнале', 'Всегда ( можно блокировать )', 'При отсутствии сигнала'];
+    const TRANSMIT = ['Нет', 'Следующей стрелочке'];
 
+    const modal = ModalHandler.showModal();
+    const colorSelect = modal.createSelect('Цвет', COLORS)
+    colorSelect.value = COLORS[arrow.custom_data[0]];
+    colorSelect.onchange = () => arrow.custom_data[0] = COLORS.indexOf(colorSelect.value);
+
+    const activationSelect = modal.createSelect('Активация', ACTIVATION)
+    activationSelect.value = ACTIVATION[arrow.custom_data[1]];
+    activationSelect.onchange = () => arrow.custom_data[1] = ACTIVATION.indexOf(activationSelect.value);
+
+    const transmitSelect = modal.createSelect('Передача', TRANSMIT)
+    transmitSelect.value = TRANSMIT[arrow.custom_data[2]];
+    transmitSelect.onchange = () => arrow.custom_data[2] = TRANSMIT.indexOf(transmitSelect.value);
 }
 rgb_lamp.load_cd = (cd) => {
     let transmit = cd[0] & 1;
@@ -82,186 +53,89 @@ rgb_lamp.load_cd = (cd) => {
 rgb_lamp.save_cd = (arrow) => {
     return (arrow.custom_data[0] << 5) | (arrow.custom_data[1] << 3) | arrow.custom_data[2];
 }
-rgb_lamp.save_cd = (arrow);
 rgb_lamp.custom_data = [4, 0, 0];
 // endregion
+// region PURPLE_ARROW
+const purple_arrow = mod.registerArrow(1)
+purple_arrow.name = ['Purple arrow','Фиолетовая стрелка','Фіолетова стрілка','Фіялетавая стрэлка'];
+purple_arrow.activation = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
+purple_arrow.action = ["Sends a signal forwards, skipping `n` cells.","Передает сигнал вперед через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
+purple_arrow.textures = ["https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/purple_arrow.png", "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/purple_diagonal_arrow.png"];
+purple_arrow.clickable = true;
+purple_arrow.update = (arrow) => {
+    if (arrow.signalsCount > 0) arrow.signal = 5;
+    else arrow.signal = 0;
+}
+purple_arrow.transmit = (arrow) => {
+    if (arrow.signal === 5) ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -arrow.custom_data[0], arrow.custom_data[1]));
+}
+purple_arrow.click = (arrow) => {
+    const modal = ModalHandler.showModal();
+    const xSelect = modal.createInput('Вперёд', 'От 0 до 15')
+    xSelect.value = arrow.custom_data[0];
+    xSelect.onchange = () => arrow.custom_data[0] = Math.max(0, Math.min(15, xSelect.value));
 
-window.document.addEventListener('fapiloaded', function() {
-    // regionЛГБТлампочка
-    let лгбт_подсветочка = new window.game.FAPI.FModArrowType();
-    лгбт_подсветочка.id = 0;
-    лгбт_подсветочка.name = ['RGB lamp','Разноцветная лампочка','Різнобарвна лампочка','Рознакаляровая лямпа'];
-    лгбт_подсветочка.info = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
-    лгбт_подсветочка.does = ["Does nothing.","Ничего не делает.","Нічого не робить.","Нічога не рабіць."];
-    лгбт_подсветочка.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/rgb_lamp.png";
-    лгбт_подсветочка.is_pressable = true;
-    лгбт_подсветочка.update = (arrow, chunk, x, y) => {
-        let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
-
-        if (color === 0) arrow.signal = arrow.signalsCount;
-        else if (activation === 0 && arrow.signalsCount > 0) arrow.signal = color;
-        else if (activation === 1) arrow.signal = color;
-        else if (activation === 2 && arrow.signalsCount === 0) arrow.signal = color;
-        else arrow.signal = 0;
-    };
-    лгбт_подсветочка.transmit = (arrow, chunk, x, y) => {
-        if (arrow.signal !== 0) {
-            let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
-            if (transmit === 1) window.game.FAPI.SignalUpdater.updateCount(window.game.FAPI.SignalUpdater.adv_getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
-        }
-    };
-    лгбт_подсветочка.gdata = (arrow) => {
-        let transmit = arrow.custom_data[0] & 1;
-        let activation = (arrow.custom_data[0] >> 3) & 0b11;
-        let color = (arrow.custom_data[0] >> 5) & 0b111;
-        return [color, activation, transmit];
-    }
-    лгбт_подсветочка.sdata = (color, activation, transmit) => {
-        let data = (color << 5) | (activation << 3) | transmit;
-        return [data];
-    }
-    лгбт_подсветочка.press = (arrow, is_shift) => {
-        rgb_modal.showModal();
-        let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
-        rgb_select.value = colors[color];
-        rgb_select.onchange = () => {
-            let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
-            color = colors.indexOf(rgb_select.value);
-            arrow.custom_data = лгбт_подсветочка.sdata(color, activation, transmit);
-        }
-        activation_select.value = activations[activation];
-        activation_select.onchange = () => {
-            let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
-            activation = activations.indexOf(activation_select.value);
-            arrow.custom_data = лгбт_подсветочка.sdata(color, activation, transmit);
-        }
-        transmit_select.value = transmits[transmit];
-        transmit_select.onchange = () => {
-            let [color, activation, transmit] = лгбт_подсветочка.gdata(arrow);
-            transmit = transmits.indexOf(transmit_select.value);
-            arrow.custom_data = лгбт_подсветочка.sdata(color, activation, transmit);
-        }
-    };
-    лгбт_подсветочка.custom_data = [128];
-
-    colors = ['Радужный', 'Красный', 'Синий', 'Жёлтый', 'Зелёный', 'Оранжевый', 'Фиолетовый', 'Чёрный'];
-    activations = ['При сигнале', 'Всегда ( можно блокировать )', 'При отсутствии сигнала'];
-    transmits = ['Нет', 'Следующей стрелочке'];
-
-    let rgb_modal = window.game.FAPI.ModalHandler.createModal();
-    let rgb_select = window.game.FAPI.ModalHandler.createSelect(rgb_modal, 'Цвет');
-    window.game.FAPI.ModalHandler.createOptions(rgb_select, colors);
-    let activation_select = window.game.FAPI.ModalHandler.createSelect(rgb_modal, 'Активация');
-    window.game.FAPI.ModalHandler.createOptions(activation_select, activations);
-    let transmit_select = window.game.FAPI.ModalHandler.createSelect(rgb_modal, 'Передача');
-    window.game.FAPI.ModalHandler.createOptions(transmit_select, transmits);
-    // endregion
-    // region ФиолетоваяСтрелка
-    let purple_arrow = new window.game.FAPI.FModArrowType();
-    purple_arrow.id = 1;
-    purple_arrow.name = ['Purple arrow','Фиолетовая стрелка','Фіолетова стрілка','Фіялетавая стрэлка'];
-    purple_arrow.info = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
-    purple_arrow.does = ["Sends a signal forwards, skipping `n` cells.","Передает сигнал вперед через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
-    purple_arrow.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/purple_arrow.png";
-    purple_arrow.is_pressable = true;
-    purple_arrow.update = (arrow, chunk, x, y) => {
-        if (arrow.signalsCount > 0) arrow.signal = 6;
-        else arrow.signal = 0;
-    };
-    purple_arrow.press = (arrow, is_shift) => {
-        purple_input.onchange = (e) => arrow.custom_data[0] = purple_input.value;
-        purple_input.value = arrow.custom_data[0];
-        purple_modal.showModal();
-    };
-    purple_arrow.transmit = (arrow, chunk, x, y) => {
-        if (arrow.signal === 6) {
-            let distance = Math.min(Math.max(arrow.custom_data[0], 1), 10);
-            window.game.FAPI.SignalUpdater.updateCount(window.game.FAPI.SignalUpdater.adv_getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -distance, 0));
-        }
-        if (arrow.signalsCount === 0) arrow.signal = 0;
-    }
-    purple_arrow.custom_data = [2];
-
-    let purple_modal = window.game.FAPI.ModalHandler.createModal();
-    let purple_input = window.game.FAPI.ModalHandler.createInput(purple_modal, 'Дистанция');
-    // endregion
-    // region ФиолетоваяДиагональнаяСтрелка
-    let purple_diagonal_arrow = new window.game.FAPI.FModArrowType();
-    purple_diagonal_arrow.id = 2;
-    purple_diagonal_arrow.name = ['Purple diagonal arrow','Фиолетовая диагональная стрелка','Фіолетова стрілка','Фіялетавая стрэлка'];
-    purple_diagonal_arrow.info = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
-    purple_diagonal_arrow.does = ["Sends a signal diagonally, skipping `n` cells.","Передает сигнал по диагонали через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
-    purple_diagonal_arrow.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/purple_diagonal_arrow.png";
-    purple_diagonal_arrow.is_pressable = true;
-    purple_diagonal_arrow.update = (arrow, chunk, x, y) => {
-        if (arrow.signalsCount > 0) arrow.signal = 6;
-        else arrow.signal = 0;
-    };
-    purple_diagonal_arrow.press = (arrow) => {
-        purple_diagonal_input.onchange = (e) => arrow.custom_data[0] = purple_diagonal_input.value;
-        purple_diagonal_input.value = arrow.custom_data[0];
-        purple_diagonal_modal.showModal();
-    };
-    purple_diagonal_arrow.transmit = (arrow, chunk, x, y) => {
-        if (arrow.signal === 6) {
-            let distance = Math.min(Math.max(arrow.custom_data[0], 1), 10);
-            window.game.FAPI.SignalUpdater.updateCount(window.game.FAPI.SignalUpdater.adv_getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -distance, distance));
-        }
-        if (arrow.signalsCount === 0) arrow.signal = 0;
-    }
-    purple_diagonal_arrow.custom_data = [2];
-
-
-    let purple_diagonal_modal = window.game.FAPI.ModalHandler.createModal();
-    let purple_diagonal_input = window.game.FAPI.ModalHandler.createInput(purple_diagonal_modal, 'Дистанция');
-    // endregion
-    // region БлокТекста
-    let symbols = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!?\"\`\'#()[].,_- \n'.split('');
-    let text_block = new window.game.FAPI.FModArrowType();
-    text_block.id = 3;
-    text_block.name = ['Block of text','Блок текста','Блок текста','Блок текста'];
-    text_block.info = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
-    text_block.does = ["Sends a signal diagonally, skipping `n` cells.","Передает сигнал по диагонали через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
-    text_block.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/text_block.png";
-    text_block.is_pressable = true;
-    text_block.text2seq = function(text) {
-        let seq = [];
-        text.split('').forEach((symbol) => {
-            let index = symbols.indexOf(symbol);
-            if (index !== -1) seq.push(index);
-        });
-        return seq;
-    }
-    text_block.seq2text = function(seq) {
-        let text = '';
-        seq.forEach((val) => {
-            text += symbols[val];
-        });
-        return text;
-    }
-    text_block.press = (arrow) => {
-        text_block_input.onchange = (e) => arrow.custom_data = text_block.text2seq(text_block_input.value);
-        text_block_input.value = text_block.seq2text(arrow.custom_data);
-        text_block_modal.showModal();
-    };
-    text_block.custom_data = text_block.text2seq('Пусто');
-
-
-    let text_block_modal = window.game.FAPI.ModalHandler.createModal();
-    let text_block_input = window.game.FAPI.ModalHandler.createTextInput(text_block_modal, 'Текст');
-    // endregion
-
-    // TODO: Накопительная стрелка
-    // TODO: Рандомизатор в 2 направления
-    // TODO: Кнопка которая выдаёт сигнал пока нажата ( зажимаемая, а не на один тик )
-
-    game.navigation.gamePage.playerUI.toolbarController.inventory.element.appendChild(rgb_modal);
-    game.navigation.gamePage.playerUI.toolbarController.inventory.element.appendChild(purple_modal);
-    game.navigation.gamePage.playerUI.toolbarController.inventory.element.appendChild(purple_diagonal_modal);
-    game.navigation.gamePage.playerUI.toolbarController.inventory.element.appendChild(text_block_modal);
-
-    window.game.FAPI.registerMod('fotis.dlc_core', (mod) => {
-        window.game.FAPI.registerArrows([лгбт_подсветочка, purple_arrow, purple_diagonal_arrow, text_block], mod);
-        console.log('`DLC Core` loaded!');
+    const ySelect = modal.createInput('Вбок', 'От 0 до 15')
+    ySelect.value = arrow.custom_data[1];
+    ySelect.onchange = () => arrow.custom_data[1] = Math.max(0, Math.min(15, ySelect.value));
+}
+purple_arrow.draw = (arrow, index) => {
+    if (arrow.custom_data[1] !== 0) return index + 1;
+    return index;
+}
+purple_arrow.load_cd = (cd) => {
+    let x = (cd[0] >> 4) & 0b1111;
+    let y = cd[0] & 0b1111;
+    return [x, y];
+}
+purple_arrow.save_cd = (arrow) => {
+    return (arrow.custom_data[0] << 4) | arrow.custom_data[1];
+}
+purple_arrow.custom_data = [2, 0];
+// endregion
+// region TEXT_BLOCK
+function text2seq(text) {
+    let seq = [];
+    text.split('').forEach((symbol) => {
+        let index = SYMBOLS.indexOf(symbol);
+        if (index !== -1) seq.push(index);
     });
-});
+    return seq;
+}
+function seq2text(seq) {
+    let text = '';
+    seq.forEach((val) => text += SYMBOLS[val]);
+    return text;
+}
+
+const text_block = mod.registerArrow(2)
+text_block.name =['Block of text','Блок текста','Блок текста','Блок текста'];
+text_block.activation = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
+text_block.action =["Sends a signal diagonally, skipping `n` cells.","Передает сигнал по диагонали через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
+text_block.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/text_block.png";
+purple_arrow.clickable = true;
+purple_arrow.click = (arrow) => {
+    const modal = ModalHandler.showModal();
+    const textArea = modal.createTextArea('Текст', 'Введите текст')
+    textArea.value = seq2text(arrow.custom_data);
+    textArea.onchange = () => arrow.custom_data = text2seq(textArea.value);
+}
+// endregion
+// region BUTTON
+const button = mod.registerArrow(2)
+button.name =['Button','Блок текста','Блок текста','Блок текста'];
+button.activation = ["On press.","Зажимается на ПКМ.","Зажимается на ПКМ.","Зажимается на ПКМ."];
+button.action =["Sends a signal around arrow.","Передает сигнал в близлежащие стрелочки.","Передает сигнал в близлежащие стрелочки.","Передает сигнал в близлежащие стрелочки."];
+button.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/button.png";
+button.pressable = true;
+button.update = (arrow) => arrow.signal = 0;
+button.press = (arrow, is_shift) => {
+    arrow.signal = 5;
+    ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 0));
+    ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 1, 0));
+    ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, -1));
+    ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, 1));
+}
+// endregion
+
+// TODO: Рандомайзер с настраиваемым рандомом 
