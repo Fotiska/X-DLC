@@ -558,6 +558,7 @@
             return true;
         }
         showModal() {
+            this.closeModal();
             return this.openedModal = new FModal();
         }
     };

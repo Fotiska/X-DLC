@@ -49,7 +49,7 @@ rgb_lamp.load_cd = (cd) => {
     return [color, activation, transmit];
 }
 rgb_lamp.save_cd = (arrow) => {
-    return (arrow.custom_data[0] << 5) | (arrow.custom_data[1] << 3) | arrow.custom_data[2];
+    return [(arrow.custom_data[0] << 5) | (arrow.custom_data[1] << 3) | arrow.custom_data[2]];
 }
 rgb_lamp.custom_data = [4, 0, 0];
 // endregion
@@ -62,11 +62,11 @@ purple_arrow.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/im
 purple_arrow.textures = ["https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/purple_arrow.png", "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/purple_diagonal_arrow.png"];
 purple_arrow.clickable = true;
 purple_arrow.update = (arrow) => {
-    if (arrow.signalsCount > 0) arrow.signal = 5;
+    if (arrow.signalsCount > 0) arrow.signal = 6;
     else arrow.signal = 0;
 }
 purple_arrow.transmit = (arrow) => {
-    if (arrow.signal === 5) FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -arrow.custom_data[0], arrow.custom_data[1]));
+    if (arrow.signal === 6) FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -arrow.custom_data[0], arrow.custom_data[1]));
 }
 purple_arrow.click = (arrow) => {
     const modal = FAPI.imodules.ModalHandler.showModal();
@@ -88,7 +88,7 @@ purple_arrow.load_cd = (cd) => {
     return [x, y];
 }
 purple_arrow.save_cd = (arrow) => {
-    return (arrow.custom_data[0] << 4) | arrow.custom_data[1];
+    return [(arrow.custom_data[0] << 4) | arrow.custom_data[1]];
 }
 purple_arrow.custom_data = [2, 0];
 // endregion
@@ -112,8 +112,8 @@ text_block.name =['Block of text','Блок текста','Блок текста
 text_block.activation = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
 text_block.action =["Sends a signal diagonally, skipping `n` cells.","Передает сигнал по диагонали через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
 text_block.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/text_block.png";
-purple_arrow.clickable = true;
-purple_arrow.click = (arrow) => {
+text_block.clickable = true;
+text_block.click = (arrow) => {
     const modal = FAPI.imodules.ModalHandler.showModal();
     const textArea = modal.createTextArea('Текст', 'Введите текст')
     textArea.value = seq2text(arrow.custom_data);
