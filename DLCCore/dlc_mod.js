@@ -121,7 +121,7 @@ text_block.click = (arrow) => {
 }
 // endregion
 // region BUTTON
-const button = mod.registerArrow(2)
+const button = mod.registerArrow(3)
 button.name =['Button','Блок текста','Блок текста','Блок текста'];
 button.activation = ["On press.","Зажимается на ПКМ.","Зажимается на ПКМ.","Зажимается на ПКМ."];
 button.action =["Sends a signal around arrow.","Передает сигнал в близлежащие стрелочки.","Передает сигнал в близлежащие стрелочки.","Передает сигнал в близлежащие стрелочки."];

@@ -1,4 +1,5 @@
 (() => {
+    // region Getting Modules
     const modules = {};
     const refs = [];
     function ref(module, callback, order=0) {
@@ -22,7 +23,7 @@
             });
         }
     }
-
+    // endregion
     // region Classes
     class FMod {
         constructor(id, idname) {
@@ -166,7 +167,6 @@
                 else div.style.height = value;
             });
         }
-        // TODO: Сделать методы для создания `Select` с `Option`, `TextArea`
     }
     class FModPage extends FModPageContainer {
         constructor(idname, isHorizontal=true) {
@@ -342,12 +342,12 @@
         }
     }
     // endregion
-
+    // region Instantiate FAPI
     fapi = new FAPI();
     window.fapi = fapi;
     window.ref = ref;
-
-    // region Handler Classes
+    // endregion
+    // region UI Classes
     new class XDLCPage extends FModPage {
         constructor() {
             super('x_dlc.main');
@@ -563,7 +563,6 @@
         }
     };
     // endregion
-
     // region Mod Loading
     function raw(path) {
         if (path.includes('githubusercontent')) return path;
@@ -603,7 +602,7 @@
         manifests[modJson.id] = modJson;
     })
     function checkCircularDependency(id) {
-        return false;
+        return false; // TODO: Проверка цикличных зависимостей
     }
     function loadMod(id, manifest) {
         if (Object.keys(loadResults).includes(id)) return loadResults[id].code === 1;
@@ -658,9 +657,7 @@
      */
     // endregion
 
-    ref('ChunkUpdates', (chunkUpdates) => {
-        // TODO: Заменить `SignalHandler` на `ChunkUpdates`
-        class SignalHandler {
+    ref('ChunkUpdates', (chunkUpdates) => new class ChunkUpdates {
             /**
              * Перенос текущих значений стрелочки в старые
              * @param {Object.<string,any>} arrow Стрелочка
@@ -967,17 +964,33 @@
                     });
                 });
             }
-        }
-        const sh = new SignalHandler();
-        imodules.signalhandler = sh;
-        chunkUpdates.sh = sh;
-        chunkUpdates.toLast = sh.toLast;
-        chunkUpdates.updateCount = sh.updateCount;
-        chunkUpdates.blockSignal = sh.blockSignal;
-        chunkUpdates.getArrowAt = sh.getArrowAt;
-        chunkUpdates.update = sh.update;
-        return chunkUpdates;
-    })
+            /**
+             * Стирает все сигналы стрелочек
+             * @param {Object.<string,any>} gameMap Карта
+             * @return {void} Ничего не возвращает
+             */
+            clearSignals(gameMap) {
+                gameMap.chunks.forEach((chunk) => {
+                    chunk.arrows.forEach((arrow) => {
+                        arrow.signal = 0;
+                        arrow.lastSignal = 0;
+                        arrow.signalsCount = 0;
+                    });
+                    chunk.levelArrows.forEach((levelArrow) => levelArrow.state = null);
+                });
+            }
+            /**
+             * Проверка поменялась ли стрелочка или нет
+             * @param {Object.<string,any>} arrow Стрелка
+             * @return {boolean} Изменилась ли стрелка или нет
+             */
+            wasArrowChanged(arrow) {
+                return arrow.type !== arrow.lastType ||
+                       arrow.rotation !== arrow.lastRotation ||
+                       arrow.flipped !== arrow.lastFlipped ||
+                       arrow.signal !== arrow.lastSignal;
+            }
+        })
     ref('PlayerAccess', (playerAccess) => class PlayerAccess extends playerAccess {
         constructor() {
             super();
