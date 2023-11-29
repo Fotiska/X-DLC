@@ -127,13 +127,17 @@ button.activation = ["On press.","Зажимается на ПКМ.","Зажим
 button.action =["Sends a signal around arrow.","Передает сигнал в близлежащие стрелочки.","Передает сигнал в близлежащие стрелочки.","Передает сигнал в близлежащие стрелочки."];
 button.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/button.png";
 button.pressable = true;
-button.update = (arrow) => arrow.signal = 0;
-button.press = (arrow, is_shift) => {
-    arrow.signal = 5;
+button.update = (arrow) => arrow.signal = arrow.pressed ? 5 : 0;
+button.transmit = (arrow) => {
+    if (!arrow.pressed) return;
     FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 0));
     FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 1, 0));
     FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, -1));
     FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, 1));
+    arrow.pressed = false;
+}
+button.press = (arrow, is_shift) => {
+    arrow.pressed = true;
 }
 // endregion
 
