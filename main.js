@@ -777,6 +777,7 @@
                         const y = arrow.y;
                         switch (arrow.type) {
                             case 0:
+                                arrow.signalsCount = 0;
                                 return;
                             case 1: // Стрелочка
                             case 4: // Стрелочка задержки
