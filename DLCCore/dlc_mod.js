@@ -1,6 +1,8 @@
 // Defines
 const SYMBOLS = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!?\"\`\'#()[].,_- \n'.split('');
 const FAPI = window.fapi;
+const ModalHandler = FAPI.imodules.ModalHandler;
+const ChunkUpdates = FAPI.routes.ChunkUpdates;
 
 const mod = FAPI.registerMod('fotis.dlc_core');
 
@@ -22,14 +24,14 @@ rgb_lamp.update = (arrow) => {
 }
 rgb_lamp.transmit = (arrow) => {
     let [color, activation, transmit] = arrow.custom_data;
-    if (arrow.signal !== 0 && transmit === 1) FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 0));
+    if (arrow.signal !== 0 && transmit === 1) ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 0));
 }
 rgb_lamp.click = (arrow) => {
     const COLORS = ['Радужный ( от кол-ва сигналов )', 'Красный', 'Синий', 'Жёлтый', 'Зелёный', 'Оранжевый', 'Фиолетовый', 'Чёрный'];
     const ACTIVATION = ['При сигнале', 'Всегда ( можно блокировать )', 'При отсутствии сигнала'];
     const TRANSMIT = ['Нет', 'Следующей стрелочке'];
 
-    const modal = FAPI.imodules.ModalHandler.showModal();
+    const modal = ModalHandler.showModal();
     const colorSelect = modal.createSelect('Цвет', COLORS)
     colorSelect.value = COLORS[arrow.custom_data[0]];
     colorSelect.onchange = () => arrow.custom_data[0] = COLORS.indexOf(colorSelect.value);
@@ -66,10 +68,10 @@ purple_arrow.update = (arrow) => {
     else arrow.signal = 0;
 }
 purple_arrow.transmit = (arrow) => {
-    if (arrow.signal === 6) FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -arrow.custom_data[0], arrow.custom_data[1]));
+    if (arrow.signal === 6) ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -arrow.custom_data[0], arrow.custom_data[1]));
 }
 purple_arrow.click = (arrow) => {
-    const modal = FAPI.imodules.ModalHandler.showModal();
+    const modal = ModalHandler.showModal();
     const xSelect = modal.createInput('Вперёд', 'От 0 до 15')
     xSelect.value = arrow.custom_data[0];
     xSelect.onchange = () => arrow.custom_data[0] = Math.max(0, Math.min(15, xSelect.value));
@@ -114,7 +116,7 @@ text_block.action =["Sends a signal diagonally, skipping `n` cells.","Перед
 text_block.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/text_block.png";
 text_block.clickable = true;
 text_block.click = (arrow) => {
-    const modal = FAPI.imodules.ModalHandler.showModal();
+    const modal = ModalHandler.showModal();
     const textArea = modal.createTextArea('Текст', 'Введите текст')
     textArea.value = seq2text(arrow.custom_data);
     textArea.onchange = () => arrow.custom_data = text2seq(textArea.value);
@@ -122,7 +124,7 @@ text_block.click = (arrow) => {
 // endregion
 // region BUTTON
 const button = mod.registerArrow(3)
-button.name =['Button','Блок текста','Блок текста','Блок текста'];
+button.name =['Button','Кнопка','Кнопка','Кнопка'];
 button.activation = ["On press.","Зажимается на ПКМ.","Зажимается на ПКМ.","Зажимается на ПКМ."];
 button.action =["Sends a signal around arrow.","Передает сигнал в близлежащие стрелочки.","Передает сигнал в близлежащие стрелочки.","Передает сигнал в близлежащие стрелочки."];
 button.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/button.png";
@@ -130,14 +132,14 @@ button.pressable = true;
 button.update = (arrow) => arrow.signal = arrow.pressed ? 5 : 0;
 button.transmit = (arrow) => {
     if (!arrow.pressed) return;
-    FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 0));
-    FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 1, 0));
-    FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, -1));
-    FAPI.modules.ChunkUpdates.updateCount(arrow, FAPI.modules.ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, 1));
+    ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 0));
+    ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 1, 0));
+    ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, -1));
+    ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, 1));
     arrow.pressed = false;
 }
 button.press = (arrow, is_shift) => {
-    arrow.pressed = true;
+    if (is_shift) arrow.pressed = true;
 }
 // endregion
 

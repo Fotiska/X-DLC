@@ -1,13 +1,14 @@
 (() => {
     // region Getting Modules
     const modules = {};
+    const imodules = {};
+    const routes = {};
     const refs = [];
     function ref(module, callback, order=0) {
         // TODO: Сделать `order` чтобы некоторые ссылки загружались раньше остальных
         // if (refs[module] !== undefined) console.warn(`Ref for \`${module}\` exists, be pretty accurate!`);
         refs.push([module, callback]);
     }
-    const imodules = {};
     const pfc = Function.prototype.call;
     Function.prototype.call = function(...e) {
         pfc.apply(this, e);
@@ -24,6 +25,31 @@
         }
     }
     // endregion
+    // region Routes
+    routes.ChunkUpdates = new class ChunkUpdatesRoute {
+        toLast(arrow) {
+            fapi.modules.ChunkUpdates.toLast(arrow);
+        }
+        updateCount(fromArrow, arrow, add=1) {
+            fapi.modules.ChunkUpdates.updateCount(fromArrow, arrow, add);
+        }
+        blockSignal(arrow) {
+            fapi.modules.ChunkUpdates.blockSignal(arrow);
+        }
+        getArrowAt(chunk, x, y, rotation, flipped, distance=-1, diagonal=0) {
+            return fapi.modules.ChunkUpdates.getArrowAt(chunk, x, y, rotation, flipped, distance, diagonal);
+        }
+        update(gameMap) {
+            fapi.modules.ChunkUpdates.update(gameMap);
+        }
+        clearSignals(gameMap) {
+            fapi.modules.ChunkUpdates.clearSignals(gameMap);
+        }
+        wasArrowChanged(arrow) {
+            return fapi.modules.ChunkUpdates.wasArrowChanged(arrow);
+        }
+    }
+    // endregion
     // region Classes
     class FMod {
         constructor(id, idname) {
@@ -37,6 +63,8 @@
             this.showUI = (container) => undefined;
         }
         registerArrow(arrowId) {
+            if (this.arrows[arrowId] !== undefined)
+                throw new Error(`Arrow with id \`${arrowId}\` in mod \`${this.idname}\` already exists`);
             const arrow = new FModArrow();
             arrow.id = arrowId;
             arrow.type = fapi.MAX_TYPE++;
@@ -53,11 +81,12 @@
             this.activation = ["Unknown ( mod arrow )", "Unknown ( mod arrow )", "Unknown ( mod arrow )", "Unknown ( mod arrow )"]; // Как активируется
             this.action = ["Unknown ( mod arrow )", "Unknown ( mod arrow )", "Unknown ( mod arrow )", "Unknown ( mod arrow )"]; // Куда передаёт сигнал
             this.mod = null;
-            this.icon_url = ""; // Основная текстура
-            this.textures = undefined; // Дополнительные текстуры
+            this.icon_url = ""; // Текстура стрелочки
+            this.textures = undefined; // Текстуры стрелочки ( если `undefined` то берётся основная текстура )
             this.clickable = false; // Может ли стрелочка нажиматься
             this.pressable = false; // Может ли стрелочка зажиматься
             this.custom_data = [];
+            this.TEXTURE_INDEX = 1;
 
             this.update = () => undefined;
             this.click = () => undefined; // Вызывается при нажатии на стрелочку
@@ -305,6 +334,7 @@
             this.ID_SYMBOLS = 'abcdefghijklmnopqrstuvwxyz_.'.split('');
             this.modules = modules;
             this.imodules = imodules;
+            this.routes = routes;
             this.experimental = {
                 'updateLevelArrow': true, // Обновление сигнала стрелочки из уровня
             }
@@ -374,9 +404,11 @@
             this.jsonContainer = this.xdlcContainer.createContainer('50px', true);
             this.jsonContainer.container.style.padding = '10px';
             this.jsonInput = this.jsonContainer.createInput('Ссылка на `.json` файл', 'text');
+            this.jsonInput.style.fontSize = '16px';
             this.jsonInput.style.backgroundColor = 'var(--blue)';
             this.jsonContainer.createSpace('25px');
             this.loadBtn = this.jsonContainer.createButton('Загрузить', '150px');
+            this.loadBtn.style.fontSize = '16px';
             this.loadBtn.style.backgroundColor = 'var(--light-green)';
             this.loadBtn.onclick = () => {
                 if (this.jsonInput.value === '') return;
@@ -656,7 +688,7 @@
      * 6 - версия модлоадера отличается
      */
     // endregion
-
+    // region Modifying Modules
     ref('ChunkUpdates', (chunkUpdates) => new class ChunkUpdates {
             /**
              * Перенос текущих значений стрелочки в старые
@@ -1068,6 +1100,7 @@
                 Object.values(mod.arrows).forEach((arrow) => {
                     if (arrow.textures === undefined) arrow.textures = [arrow.icon_url];
                     if (arrow.textures.length > 6) console.warn(`Arrow with id \`${arrow.id}\` from mod \`${arrow.mod.name}\` uses \`${arrow.textures.length}\` textures for draw`);
+                    arrow.TEXTURE_INDEX = fapi.MAX_TEXTURE_INDEX - 1;
                     arrow.textures.forEach((texture) => images.push([fapi.MAX_TEXTURE_INDEX++, texture]));
                 });
             });
@@ -1111,7 +1144,10 @@
         }
         drawArrow(e, t, s, i, n, o, arrow) {
             s -= 1;
-            if (arrow.type > fapi.BASIC_TYPES) s = fapi.getArrowByType(arrow.type).draw(arrow, s);
+            if (arrow.type > fapi.BASIC_TYPES) {
+                const marrow = fapi.getArrowByType(arrow.type);
+                s = marrow.draw(arrow, marrow.TEXTURE_INDEX);
+            }
             if (s === -1) return;
             if (this.lastArrowType !== s) {
                 let x;
@@ -1390,13 +1426,10 @@
             }
             if (unknownMods.length !== 0) {
                 let text = 'Невозможно загрузить карту, отстутствуют данные моды:\n';
-                unknownMods.forEach((mod) => {
-                    text += mod + '\n';
-                });
+                unknownMods.forEach((mod) => text += mod + '\n');
                 text += 'Желательно выйти с карты чтобы не перезаписать её 💀';
                 alert(text);
-                // window.open('https://logic-arrows.io/maps');
-                // window.close();
+                // window.location.reload()
                 throw new Error('Unknown mods');
             }
         }
@@ -1642,4 +1675,5 @@
             this.frame++
         }
     });
+    // endregion
 })();
