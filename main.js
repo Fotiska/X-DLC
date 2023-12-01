@@ -1237,7 +1237,7 @@
                 if (marrow !== undefined) {
                     document.body.style.cursor = marrow.clickable || marrow.pressable ? 'pointer' : 'default';
                     const shiftPressed = this.keyboardHandler.getShiftPressed();
-                    if (marrow.pressable && pressed) marrow.press(arrow, shiftPressed);
+                    if (marrow.pressable && imodules.playercontrols.pressed) marrow.press(arrow, shiftPressed);
                 }
             }
         }
