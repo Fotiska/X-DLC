@@ -178,6 +178,12 @@
             return btn;
         }
 
+        // createCheckBox(size=100) {
+        //     const checkbox = this.createInput(undefined, 'checkbox', size);
+        //
+        //     return checkbox;
+        // }
+
         clear() {
             this.containers = [];
             this.container.innerHTML = '';
@@ -292,7 +298,7 @@
             input.placeholder = placeholder;
             pair.appendChild(input);
             this.content.appendChild(pair);
-            return text;
+            return input;
         };
         createSelect(label, options) {
             const pair = document.createElement('div');
@@ -336,7 +342,8 @@
             this.imodules = imodules;
             this.routes = routes;
             this.experimental = {
-                'updateLevelArrow': true, // Обновление сигнала стрелочки из уровня
+                autoRotateArrow: false, // Вращать стрелочку при постановке
+                updateLevelArrow: true, // Обновление сигнала стрелочки из уровня
             }
             this.mods = [];
             this.pages = {};
@@ -440,6 +447,15 @@
                 modsToLoad.push([true, raw(this.jsonInput.value)]);
                 localStorage.setItem('mods', JSON.stringify(modsToLoad));
             }
+
+            // this.experimentalAutoRotate = this.xdlcContainer.createContainer('50px', true);
+            // this.experimentalAutoRotate.container.style.padding = '10px';
+            // this.autoRotateLabel = this.experimentalAutoRotate.createText('Авто поворот стрелочки', '100%');
+            // this.autoRotateLabel.style.width = '50px';
+            // this.experimentalAutoRotate.createSpace('25px');
+            // this.autoRotateCheckbox = this.experimentalAutoRotate.createCheckBox('Ссылка на `.json` файл', 'text');
+            // this.autoRotateCheckbox.style.fontSize = '16px';
+            // this.autoRotateCheckbox.style.backgroundColor = 'var(--blue)';
         }
         drawMod(loadResult) {
             const mod = loadResult.manifest;
@@ -1214,13 +1230,14 @@
             if (imodules.playercontrols.keyboardHandler.getKeyPressed('Escape') && imodules.ModalHandler.closeModal()) return;
             else if (imodules.ModalHandler.openedAnyModal()) return document.body.style.cursor = 'default';
             super.update();
+            imodules.playercontrols.pressed = this.mouseHandler.getMousePressed();
             const arrow = imodules.playercontrols.getArrowByMousePosition();
             if (arrow !== undefined && arrow.type > fapi.BASIC_TYPES) {
                 let marrow = fapi.getArrowByType(arrow.type);
                 if (marrow !== undefined) {
                     document.body.style.cursor = marrow.clickable || marrow.pressable ? 'pointer' : 'default';
                     const shiftPressed = this.keyboardHandler.getShiftPressed();
-                    if (marrow.pressable && this.mouseHandler.getMousePressed()) marrow.press(arrow, shiftPressed);
+                    if (marrow.pressable && pressed) marrow.press(arrow, shiftPressed);
                 }
             }
         }
@@ -1233,12 +1250,27 @@
         }
         setArrows(e, t) {
             if (!imodules.playeraccess.canSetArrows) return;
+            // const a = imodules.playercontrols.getArrowByMousePosition();
+            // if (a !== undefined && imodules.playercontrols.lsa !== undefined && imodules.playercontrols.lsa[0] === a.wx && imodules.playercontrols.lsa[1] === a.wy) return;
             super.setArrows(e, t);
             imodules.selectedmap.getCopiedArrows().forEach(((s, i) => {
                     if (modules.PlayerSettings.levelArrows.includes(s.type)) return;
                     const [n, o] = i.split(",").map((e) => parseInt(e, 10));
                     const x = e + n;
                     const y = t + o;
+                    if (fapi.experimental.autoRotateArrow && imodules.playercontrols.pressed && imodules.playercontrols.lsa !== undefined) {
+                        const ox = x - imodules.playercontrols.lsa[0];
+                        const oy = imodules.playercontrols.lsa[1] - y;
+                        if (Math.abs(ox) + Math.abs(oy) === 1) {
+                            let rotation = 0;
+                            if (ox === -1) rotation = 3;
+                            else if (ox === 1) rotation = 1;
+                            else if (oy === 1) rotation = 0;
+                            else if (oy === -1) rotation = 2;
+                            this.game.gameMap.setArrowRotation(imodules.playercontrols.lsa[0], imodules.playercontrols.lsa[1], rotation);
+                        }
+                    }
+                    imodules.playercontrols.lsa = [x, y];
                     if (imodules.playercontrols.activeCustomData !== -1 && imodules.playercontrols.activeCustomData !== undefined)
                         imodules.gamemap.setArrowCustomData(x, y, imodules.playercontrols.activeCustomData);
                     else imodules.gamemap.setArrowCustomData(x, y, s.custom_data);
