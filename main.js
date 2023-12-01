@@ -1270,8 +1270,8 @@
                 arrow.chunk = chunk;
                 arrow.x = ax;
                 arrow.y = ay;
-                arrow.cx = x;
-                arrow.cy = y;
+                arrow.wx = ax;
+                arrow.wy = ay;
                 if (!arrow.canBeEdited) return;
                 else if (modules.PlayerSettings.levelArrows.includes(arrow.type)) return;
                 arrow.custom_data = custom_data.slice(0);
@@ -1476,10 +1476,10 @@
                         arrow.refs = [];
                         arrow.lastRefs = [];
                         arrow.chunk = chunk;
-                        arrow.x = x - chunk.x * modules.CHUNK_SIZE;
-                        arrow.y = y - chunk.y * modules.CHUNK_SIZE;
-                        arrow.cx = x;
-                        arrow.cy = y;
+                        arrow.x = x;
+                        arrow.y = y;
+                        arrow.wx = x - chunk.x * modules.CHUNK_SIZE;
+                        arrow.wy = y - chunk.y * modules.CHUNK_SIZE;
                         arrow.type = type;
                         arrow.rotation = 3 & n;
                         arrow.flipped = 0 !== (4 & n);
