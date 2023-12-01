@@ -903,7 +903,7 @@
                     const chunk = arrow.chunk;
                     const x = arrow.x;
                     const y = arrow.y;
-                    arrow.refs = arrow.tempRefs;
+                    arrow.refs = arrow.tempRefs ?? [];
                     arrow.tempRefs = [];
                     switch (arrow.type) {
                         case 1:
