@@ -1228,7 +1228,7 @@
             if (!imodules.playeraccess.canPick) return;
             super.pickArrow();
             const e = this.getArrowByMousePosition();
-            if (e !== undefined && e.custom_data !== undefined) this.activeCustomData = e.custom_data.slice(0);
+            if (e !== undefined && e.custom_data !== undefined) this.activeCustomData = [...e.custom_data];
             else this.activeCustomData = -1;
         }
         setArrows(e, t) {
@@ -1270,8 +1270,8 @@
                 arrow.chunk = chunk;
                 arrow.x = ax;
                 arrow.y = ay;
-                arrow.wx = ax;
-                arrow.wy = ay;
+                arrow.wx = x;
+                arrow.wy = y;
                 if (!arrow.canBeEdited) return;
                 else if (modules.PlayerSettings.levelArrows.includes(arrow.type)) return;
                 arrow.custom_data = custom_data.slice(0);
@@ -1316,7 +1316,7 @@
                         this.tempMap.setArrowType(a, r, arrow.type);
                         this.tempMap.setArrowRotation(a, r, arrow.rotation);
                         this.tempMap.setArrowFlipped(a, r, arrow.flipped);
-                        this.tempMap.setArrowCustomData(this.tempMap, a, r, arrow.custom_data);
+                        this.tempMap.setArrowCustomData(a, r, arrow.custom_data);
                     }
                 }
             );
@@ -1378,8 +1378,9 @@
                             data.push(s);
                             if (useMods && isFromMod) {
                                 if (arrow.custom_data === undefined) arrow.custom_data = [];
-                                data.push(arrow.custom_data.length); // Длина данных стрелочки
-                                data.push(...fapi.getArrowByType(arrow.type).save_cd(arrow)); // Данные стрелочки
+                                const save_cd = fapi.getArrowByType(arrow.type).save_cd(arrow);
+                                data.push(save_cd.length); // Длина данных стрелочки
+                                data.push(...save_cd); // Данные стрелочки
                             }
                             o++;
                         }
@@ -1478,8 +1479,8 @@
                         arrow.chunk = chunk;
                         arrow.x = x;
                         arrow.y = y;
-                        arrow.wx = x - chunk.x * modules.CHUNK_SIZE;
-                        arrow.wy = y - chunk.y * modules.CHUNK_SIZE;
+                        arrow.wx = x + chunk.x * modules.CHUNK_SIZE;
+                        arrow.wy = y + chunk.y * modules.CHUNK_SIZE;
                         arrow.type = type;
                         arrow.rotation = 3 & n;
                         arrow.flipped = 0 !== (4 & n);
