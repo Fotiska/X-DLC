@@ -2,7 +2,7 @@
   "icon": "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/icon128.png",
   "name": "DLC Core",
   "author": "Фотис",
-  "script": "https://raw.githubusercontent.com/Fotiska/X-DLC/main/DLCCore/dlc_mod.js",
+  "script": "https://raw.githubusercontent.com/Fotiska/X-DLC/main/DLCCore/mod.js",
   "id": "fotis.dlc_core",
   "xdlcversion": 2
 }

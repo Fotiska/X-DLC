@@ -486,7 +486,7 @@
                 statusText = 'Циклические зависимости';
                 statusColor = 'var(--light-red)';
             } else if (code === 6) {
-                statusText = 'Версия отличается';
+                statusText = 'Сделан на старом `X-DLC`';
                 statusColor = 'var(--light-red)';
             }
             const status = nameContainer.createText(statusText, 50);
@@ -983,7 +983,7 @@
                     const y = arrow.y;
                     if (arrow.type === 3 && arrow.lastSignal === 1)
                         this.blockSignal(this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped));
-                    else if (arrow.type > 24) {
+                    else if (arrow.type > fapi.BASIC_TYPES) {
                         let marrow = fapi.getArrowByType(arrow.type);
                         if (marrow !== undefined) marrow.block(arrow);
                     }
@@ -1037,7 +1037,7 @@
     });
     ref('UIToolbarItem', (uiToolbarItem) => class UIToolbarItem extends uiToolbarItem {
         setImage(id) {
-            if (id < 24) this.image.src = `res/sprites/arrow${id + 1}.png?v=${modules.PlayerSettings.version}`
+            if (id < fapi.BASIC_TYPES) this.image.src = `res/sprites/arrow${id + 1}.png?v=${modules.PlayerSettings.version}`
             else {
                 const marrow = fapi.getArrowByType(id + 1);
                 if (marrow !== undefined) this.image.src = marrow.icon_url;
@@ -1197,7 +1197,7 @@
                 const shiftPressed = this.keyboardHandler.getShiftPressed();
 
                 if (arrow !== undefined && imodules.playercontrols.freeCursor) {
-                    if (arrow.type > 24) {
+                    if (arrow.type > fapi.BASIC_TYPES) {
                         let marrow = fapi.getArrowByType(arrow.type);
                         if (marrow !== undefined && marrow.clickable) marrow.click(arrow, shiftPressed);
                     }
@@ -1218,7 +1218,7 @@
             else if (imodules.ModalHandler.openedAnyModal()) return document.body.style.cursor = 'default';
             super.update();
             const arrow = imodules.playercontrols.getArrowByMousePosition();
-            if (arrow !== undefined && arrow.type > 24) {
+            if (arrow !== undefined && arrow.type > fapi.BASIC_TYPES) {
                 let marrow = fapi.getArrowByType(arrow.type);
                 if (marrow !== undefined) {
                     document.body.style.cursor = marrow.clickable || marrow.pressable ? 'pointer' : 'default';
@@ -1331,7 +1331,7 @@
         gameMap.chunks.forEach((chunk) => {
             const types = chunk.getArrowTypes()
             types.forEach((type) => {
-                if (type > 24) useMods = true;
+                if (type > fapi.BASIC_TYPES) useMods = true;
             });
         });
         const savedModsOrder = [];
@@ -1358,7 +1358,7 @@
             data.push(...y);
             data.push(types.length - 1);
             types.forEach((arrowType) => {
-                const isFromMod = arrowType > 24;
+                const isFromMod = arrowType > fapi.BASIC_TYPES;
                 if (useMods && isFromMod) {
                     data.push(255); // Обозначение что это стрелочка из мода
                     let marrow = fapi.getArrowByType(arrowType);
@@ -1542,7 +1542,8 @@
                     this.removePages();
                     this.menuPage = imodules.menupage = new modules.MenuPage(`modpage-${id}`, this.doMenuAction);
                 }
-                document.title = `Моды | Стрелочки`;
+                const index = modules.LangSettings.languages.indexOf(modules.LangSettings.getLanguage());
+                document.title = `${fapi.pages[id].translates[index]} | Стрелочки`;
                 imodules.menupage.page = new ModPageContent(imodules.menupage.getContent());
                 if (action === 'go') window.history.pushState(null, '', `modpage-${id}`);
                 else if (action === 'start') window.history.replaceState(null, '', `modpage-${id}`);
