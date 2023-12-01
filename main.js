@@ -903,6 +903,8 @@
                     const chunk = arrow.chunk;
                     const x = arrow.x;
                     const y = arrow.y;
+                    arrow.refs = arrow.tempRefs;
+                    arrow.tempRefs = [];
                     switch (arrow.type) {
                         case 1:
                         case 3:
@@ -972,8 +974,6 @@
                             if (marrow !== undefined) marrow.update(arrow);
                             break;
                     }
-                    arrow.refs = arrow.tempRefs;
-                    arrow.tempRefs = [];
                     arrow.lastSignalsCount = arrow.signalsCount;
                     arrow.signalsCount = 0;
                 });
