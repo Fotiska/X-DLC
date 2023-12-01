@@ -399,7 +399,6 @@
             this.xdlcContainer.container.style.backgroundColor = 'var(--norm-blue)';
             this.createSpace("100px");
             this.modsInfo = [];
-            console.log(loadResults);
             Object.keys(loadResults).forEach((id) => this.drawMod(loadResults[id]));
             this.jsonContainer = this.xdlcContainer.createContainer('50px', true);
             this.jsonContainer.container.style.padding = '10px';
@@ -422,7 +421,6 @@
                     if (modJson.author === undefined) modJson.author = 'Unknown';
                     if (modJson.icon === undefined) modJson.icon = 'Unknown';
                     if (modJson.dependencies === undefined) modJson.dependencies = [];
-                    console.log(modJson);
                     if (modJson.id === undefined) modJson = false;
                     else if (modJson.script === undefined) modJson = false;
                 } catch {
@@ -444,7 +442,6 @@
             }
         }
         drawMod(loadResult) {
-            console.log(loadResult);
             const mod = loadResult.manifest;
             const code = loadResult.code;
             const error = loadResult.error;
@@ -1273,6 +1270,8 @@
                 arrow.chunk = chunk;
                 arrow.x = ax;
                 arrow.y = ay;
+                arrow.cx = x;
+                arrow.cy = y;
                 if (!arrow.canBeEdited) return;
                 else if (modules.PlayerSettings.levelArrows.includes(arrow.type)) return;
                 arrow.custom_data = custom_data.slice(0);
@@ -1477,8 +1476,10 @@
                         arrow.refs = [];
                         arrow.lastRefs = [];
                         arrow.chunk = chunk;
-                        arrow.x = x;
-                        arrow.y = y;
+                        arrow.x = x - chunk.x * modules.CHUNK_SIZE;
+                        arrow.y = y - chunk.y * modules.CHUNK_SIZE;
+                        arrow.cx = x;
+                        arrow.cy = y;
                         arrow.type = type;
                         arrow.rotation = 3 & n;
                         arrow.flipped = 0 !== (4 & n);
