@@ -380,7 +380,7 @@
     }
     // endregion
     // region Instantiate FAPI
-    fapi = new FAPI();
+    let fapi = new FAPI();
     window.fapi = fapi;
     window.ref = ref;
     // endregion
@@ -741,7 +741,7 @@
              * @param {boolean} flipped Зеркально расположена или нет
              * @param {number} distance Дистанция от стрелочки ( отрицательное = вперёд | положительное = назад )
              * @param {number} diagonal Дистанция от стрелочки в сторону ( отрицательное = вправо | положительное = влево )
-             * @return {Object.<string,any> | void} Возвращает стрелочку если находит её, а иначе `null`
+             * @return {Object.<string,any> | void} Возвращает стрелочку если находит её, а иначе `undefined`
              */
             getArrowAt(chunk, x, y, rotation, flipped, distance=-1, diagonal=0) {
                 if (flipped) diagonal = -diagonal;
@@ -803,6 +803,16 @@
                     y -= modules.CHUNK_SIZE;
                 }
                 if (rChunk !== undefined) return rChunk.getArrow(x, y);
+            }
+            /**
+             * Простой вариант получения стрелочки
+             * @param {Object.<string,any>} arrow - Стрелочка
+             * @param {number} distance Дистанция от стрелочки ( отрицательное = вперёд | положительное = назад )
+             * @param {number} diagonal Дистанция от стрелочки в сторону ( отрицательное = вправо | положительное = влево )
+             * @return {Object.<string,any> | void} Возвращает стрелочку если находит её, а иначе `undefined`
+             */
+            sgetArrowAt(arrow, distance=-1, diagonal=0) {
+                return this.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, distance, diagonal);
             }
             /**
              * Обновление сигналов стрелочек

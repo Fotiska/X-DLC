@@ -129,14 +129,16 @@ button.activation = ["On press.","Зажимается на ПКМ.","Зажим
 button.action =["Sends a signal around arrow.","Передает сигнал в близлежащие стрелочки.","Передает сигнал в близлежащие стрелочки.","Передает сигнал в близлежащие стрелочки."];
 button.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/button.png";
 button.pressable = true;
-button.update = (arrow) => arrow.signal = arrow.pressed ? 5 : 0;
+button.update = (arrow) => {
+    arrow.signal = arrow.pressed || arrow.signalsCount > 0 ? 5 : 0;
+    arrow.pressed = false;
+}
 button.transmit = (arrow) => {
-    if (!arrow.pressed) return;
+    if (!arrow.pressed && arrow.signalsCount === 0) return;
     ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, -1, 0));
     ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 1, 0));
     ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, -1));
     ChunkUpdates.updateCount(arrow, ChunkUpdates.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, 0, 1));
-    arrow.pressed = false;
 }
 button.press = (arrow, is_shift) => {
     if (is_shift) arrow.pressed = true;
