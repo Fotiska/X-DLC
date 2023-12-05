@@ -1,3 +1,5 @@
+// TODO: Понять в чём проблема в `ChunkUpdates`
+
 (() => {
     // region Getting Modules
     const modules = {};
@@ -38,6 +40,9 @@
         }
         getArrowAt(chunk, x, y, rotation, flipped, distance=-1, diagonal=0) {
             return fapi.modules.ChunkUpdates.getArrowAt(chunk, x, y, rotation, flipped, distance, diagonal);
+        }
+        sgetArrowAt(arrow, distance=-1, diagonal=0) {
+            return fapi.modules.ChunkUpdates.sgetArrowAt(arrow, distance, diagonal);
         }
         update(gameMap) {
             fapi.modules.ChunkUpdates.update(gameMap);
@@ -702,360 +707,28 @@
      */
     // endregion
     // region Modifying Modules
-    ref('ChunkUpdates', (chunkUpdates) => new class ChunkUpdates {
-            /**
-             * Перенос текущих значений стрелочки в старые
-             * @param {Object.<string,any>} arrow Стрелочка
-             */
-            toLast(arrow) {
-                arrow.lastType = arrow.type;
-                arrow.lastSignal = arrow.signal;
-                arrow.lastRotation = arrow.rotation;
-                arrow.lastFlipped = arrow.flipped;
-            }
-            /**
-             * Добавляет единицу к количеству сигналов полученной стрелочки
-             * @param {Object.<string,any> | void} arrow Стрелочка
-             */
-            updateCount(fromArrow, arrow, add=1) {
-                if (arrow !== undefined) {
-                    arrow.signalsCount += add;
-                    if (arrow.tempRefs !== undefined) arrow.tempRefs.push(fromArrow);
-                    else arrow.tempRefs = [fromArrow];
-                }
-            }
-            /**
-             * Блокирует сигнал полученной стрелочки
-             * <br><b>Вызывать не в `transmit` а в `block` иначе не будет никакого эффекта!</b>
-             * @param {Object.<string,any> | void} arrow Стрелочка
-             */
-            blockSignal(arrow) {
-                if (arrow !== undefined) arrow.signal = 0;
-            }
-            /**
-             * Сложный вариант получения стрелочки
-             * @param {Object.<string,any>} chunk - Чанк
-             * @param {number} x Позиция по X
-             * @param {number} y Позиция по Y
-             * @param {number} rotation Поворот стрелочки ( 0 вверх | 1 вправо | 2 вниз | 3 влево )
-             * @param {boolean} flipped Зеркально расположена или нет
-             * @param {number} distance Дистанция от стрелочки ( отрицательное = вперёд | положительное = назад )
-             * @param {number} diagonal Дистанция от стрелочки в сторону ( отрицательное = вправо | положительное = влево )
-             * @return {Object.<string,any> | void} Возвращает стрелочку если находит её, а иначе `undefined`
-             */
-            getArrowAt(chunk, x, y, rotation, flipped, distance=-1, diagonal=0) {
-                if (flipped) diagonal = -diagonal;
-
-                if (rotation === 0) {
-                    y += distance;
-                    x += diagonal;
-                }
-                else if (rotation === 1) {
-                    y += diagonal;
-                    x -= distance;
-                }
-                else if (rotation === 2) {
-                    y -= distance;
-                    x -= diagonal;
-                }
-                else if (rotation === 3) {
-                    y -= diagonal;
-                    x += distance;
-                }
-
-                let rChunk = chunk;
-                if (x >= modules.CHUNK_SIZE) {
-                    if (y >= modules.CHUNK_SIZE) {
-                        rChunk = chunk.adjacentChunks[3];
-                        x -= modules.CHUNK_SIZE;
-                        y -= modules.CHUNK_SIZE;
-                    }
-                    else if (y < 0) {
-                        rChunk = chunk.adjacentChunks[1];
-                        x -= modules.CHUNK_SIZE;
-                        y += modules.CHUNK_SIZE;
-                    }
-                    else {
-                        rChunk = chunk.adjacentChunks[2];
-                        x -= modules.CHUNK_SIZE;
-                    }
-                }
-                else if (x < 0) {
-                    if (y < 0) {
-                        rChunk = chunk.adjacentChunks[7];
-                        x += modules.CHUNK_SIZE;
-                        y += modules.CHUNK_SIZE;
-                    } else if (y >= modules.CHUNK_SIZE) {
-                        rChunk = chunk.adjacentChunks[5];
-                        x += modules.CHUNK_SIZE;
-                        y -= modules.CHUNK_SIZE;
-                    } else {
-                        rChunk = chunk.adjacentChunks[6];
-                        x += modules.CHUNK_SIZE;
-                    }
-                }
-                else if (y < 0) {
-                    rChunk = chunk.adjacentChunks[0];
-                    y += modules.CHUNK_SIZE;
-                }
-                else if (y >= modules.CHUNK_SIZE) {
-                    rChunk = chunk.adjacentChunks[4];
-                    y -= modules.CHUNK_SIZE;
-                }
-                if (rChunk !== undefined) return rChunk.getArrow(x, y);
-            }
-            /**
-             * Простой вариант получения стрелочки
-             * @param {Object.<string,any>} arrow - Стрелочка
-             * @param {number} distance Дистанция от стрелочки ( отрицательное = вперёд | положительное = назад )
-             * @param {number} diagonal Дистанция от стрелочки в сторону ( отрицательное = вправо | положительное = влево )
-             * @return {Object.<string,any> | void} Возвращает стрелочку если находит её, а иначе `undefined`
-             */
-            sgetArrowAt(arrow, distance=-1, diagonal=0) {
-                return this.getArrowAt(arrow.chunk, arrow.x, arrow.y, arrow.rotation, arrow.flipped, distance, diagonal);
-            }
-            /**
-             * Обновление сигналов стрелочек
-             * @param {Object.<string,any>} gameMap Карта
-             * @return {void} Ничего не возвращает
-             */
-            update(gameMap) {
-                const allArrows = [];
-                const specificArrows = [];
-
-                gameMap.chunks.forEach((chunk) => {
-                    chunk.arrows.forEach((arrow) => {
-                        this.toLast(arrow);
-                        const x = arrow.x;
-                        const y = arrow.y;
-                        switch (arrow.type) {
-                            case 0:
-                                arrow.signalsCount = 0;
-                                return;
-                            case 1: // Стрелочка
-                            case 4: // Стрелочка задержки
-                            case 5: // Передатчик
-                            case 22: // Стрелочка из уровня #1
-                                if (arrow.signal === 1) this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped));
-                                break;
-                            case 2: // Источник
-                            case 9: // Тактовый источник
-                                if (arrow.signal === 1) {
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, 1));
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 1, 0));
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, -1));
-                                }
-                                break;
-                            case 6: // <>
-                                if (arrow.signal === 1) {
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 1, 0));
-                                }
-                                break;
-                            case 7: // ^>
-                                if (arrow.signal === 1) {
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, 1));
-                                }
-                                break;
-                            case 8: // <^>
-                                if (arrow.signal === 1) {
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, 1));
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, -1));
-                                }
-                                break;
-                            case 10: // Синяя стрелочка
-                                if (arrow.signal === 2) this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -2))
-                                break;
-                            case 11: // Диагональная стрелочка
-                                if (arrow.signal === 2) this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 1))
-                                break;
-                            case 12: // Синий курсор
-                                if (arrow.signal === 2) {
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -2, 0));
-                                }
-                                break;
-                            case 13: // Полусиний курсор
-                                if (arrow.signal === 2) {
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -2, 0));
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, 1));
-                                }
-                                break;
-                            case 14: // Синий курсор ЛКМ
-                                if (arrow.signal === 2) {
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 1));
-                                }
-                                break;
-                            case 15: // НЕ
-                            case 16: // И
-                            case 17: // Хуйня какая та
-                            case 18: // Ячейка памяти
-                            case 19: // И + Ячейка памяти
-                                if (arrow.signal === 3) this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped))
-                                break;
-                            case 20: // Рандомизатор
-                            case 24: // Направленная кнопка
-                                if (arrow.signal === 5) this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped));
-                                break;
-                            case 21: // Кнопка
-                                if (arrow.signal === 5) {
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, -1, 0));
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, 1));
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 1, 0));
-                                    this.updateCount(arrow, this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 0, -1));
-                                }
-                                break;
-                            case 23: // Стрелочка из уровня #2
-                            case 3: // Блокер
-                                specificArrows.push(arrow)
-                                break;
-                            default:
-                                let marrow = fapi.getArrowByType(arrow.type);
-                                if (marrow !== undefined) marrow.transmit(arrow);
-                                specificArrows.push(arrow)
-                                break;
-                        }
-                        allArrows.push(arrow);
-                    });
-                });
-                allArrows.forEach((arrow) => {
-                    const chunk = arrow.chunk;
-                    const x = arrow.x;
-                    const y = arrow.y;
-                    arrow.refs = arrow.tempRefs ?? [];
-                    arrow.tempRefs = [];
-                    switch (arrow.type) {
-                        case 1:
-                        case 3:
-                        case 6:
-                        case 7:
-                        case 8:
-                        case 23:
-                            arrow.signal = arrow.signalsCount > 0 ? 1 : 0;
-                            break;
-                        case 2:
-                            arrow.signal = 1;
-                            break;
-                        case 4:
-                            if (arrow.signal === 2) arrow.signal = 1;
-                            else if (arrow.signal === 0 && arrow.signalsCount > 0) arrow.signal = 2;
-                            else if (arrow.signal === 1 && arrow.signalsCount > 0) arrow.signal = 1;
-                            else arrow.signal = 0;
-                            break;
-                        case 5:
-                            arrow.signal = 0;
-                            const backward_arrow = this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped, 1);
-                            if (backward_arrow !== undefined) arrow.signal = backward_arrow.lastSignal !== 0 ? 1 : 0;
-                            break;
-                        case 9:
-                            if (arrow.signal === 0) arrow.signal = 1;
-                            else if (arrow.signal === 1) arrow.signal = 2;
-                            break;
-                        case 10:
-                        case 11:
-                        case 12:
-                        case 13:
-                        case 14:
-                            arrow.signal = arrow.signalsCount > 0 ? 2 : 0;
-                            break;
-                        case 15:
-                            arrow.signal = arrow.signalsCount > 0 ? 0 : 3;
-                            break;
-                        case 16:
-                            arrow.signal = arrow.signalsCount > 1 ? 3 : 0;
-                            break;
-                        case 17:
-                            arrow.signal = arrow.signalsCount % 2 === 1 ? 3 : 0;
-                            break;
-                        case 18:
-                            if (arrow.signalsCount > 1) arrow.signal = 3;
-                            else if (arrow.signalsCount === 1) arrow.signal = 0;
-                            break;
-                        case 19:
-                            if (arrow.signalsCount > 0) arrow.signal = arrow.signal === 3 ? 0 : 3;
-                            break;
-                        case 20:
-                            arrow.signal = (arrow.signalsCount > 0 && Math.random() < 0.5) ? 5 : 0;
-                            break;
-                        case 21:
-                            arrow.signal = 0;
-                            break;
-                        case 22:
-                            arrow.signal = arrow.signalsCount > 0 ? 1 : 0;
-                            const n = chunk.getLevelArrow(x, y);
-                            if (n !== undefined) n.update();
-                            break;
-                        case 24:
-                            arrow.signal = arrow.signalsCount > 0 ? 5 : 0;
-                            break;
-                        default:
-                            let marrow = fapi.getArrowByType(arrow.type);
-                            if (marrow !== undefined) marrow.update(arrow);
-                            break;
-                    }
-                    arrow.lastSignalsCount = arrow.signalsCount;
-                    arrow.signalsCount = 0;
-                });
-                specificArrows.forEach((arrow) => {
-                    const chunk = arrow.chunk;
-                    const x = arrow.x;
-                    const y = arrow.y;
-                    if (arrow.type === 3 && arrow.lastSignal === 1)
-                        this.blockSignal(this.getArrowAt(chunk, x, y, arrow.rotation, arrow.flipped));
-                    else if (arrow.type > fapi.BASIC_TYPES) {
-                        let marrow = fapi.getArrowByType(arrow.type);
-                        if (marrow !== undefined) marrow.block(arrow);
-                    }
-                });
-                if (!fapi.experimental.updateLevelArrow) return;
-                specificArrows.forEach((arrow) => {
-                    const chunk = arrow.chunk;
-                    chunk.levelArrows.forEach((levelArrow) => {
-                        if (levelArrow.type === 23) levelArrow.update();
-                    });
-                });
-            }
-            /**
-             * Стирает все сигналы стрелочек
-             * @param {Object.<string,any>} gameMap Карта
-             * @return {void} Ничего не возвращает
-             */
-            clearSignals(gameMap) {
-                gameMap.chunks.forEach((chunk) => {
-                    chunk.arrows.forEach((arrow) => {
-                        arrow.signal = 0;
-                        arrow.lastSignal = 0;
-                        arrow.signalsCount = 0;
-                    });
-                    chunk.levelArrows.forEach((levelArrow) => levelArrow.state = null);
-                });
-            }
-            /**
-             * Проверка поменялась ли стрелочка или нет
-             * @param {Object.<string,any>} arrow Стрелка
-             * @return {boolean} Изменилась ли стрелка или нет
-             */
-            wasArrowChanged(arrow) {
-                return arrow.type !== arrow.lastType ||
-                       arrow.rotation !== arrow.lastRotation ||
-                       arrow.flipped !== arrow.lastFlipped ||
-                       arrow.signal !== arrow.lastSignal;
-            }
-        })
+    ref('Arrow', (arrow) => class Arrow extends arrow {
+        constructor() {
+            super();
+            this.tempRefs = [];
+            this.refs = [];
+            this.chunk = undefined;
+            this.x = 0;
+            this.y = 0;
+            this.wx = 0;
+            this.wy = 0;
+        }
+    });
     ref('PlayerAccess', (playerAccess) => class PlayerAccess extends playerAccess {
         constructor() {
             super();
             fapi.mods.forEach((mod) => {
-                for (var i = 0; i < Object.values(mod.arrows).length; i += 5) {
+                for (let i = 0; i < Object.values(mod.arrows).length; i += 5) {
                     let group = Object.values(mod.arrows).slice(i, i + 5).map((arrow) => arrow.type);
                     this.arrowGroups.push(group);
                 }
             });
-            imodules.playeraccess = this;
+            imodules.playerAccess = this;
         }
     });
     ref('UIToolbarItem', (uiToolbarItem) => class UIToolbarItem extends uiToolbarItem {
@@ -1111,103 +784,13 @@
             }
         }
     });
-    ref('Render', (render) => class Render extends render {
-        constructor(e) {
-            super(e);
-            imodules.render = this;
-            // region patch_atlas
-            if (modules.PlayerSettings.patched) return;
-            console.log('Atlas patching...');
-            const images = [[1, modules.PlayerSettings.arrowAtlasImage.src]];
-            fapi.mods.forEach((mod) => {
-                Object.values(mod.arrows).forEach((arrow) => {
-                    if (arrow.textures === undefined) arrow.textures = [arrow.icon_url];
-                    if (arrow.textures.length > 6) console.warn(`Arrow with id \`${arrow.id}\` from mod \`${arrow.mod.name}\` uses \`${arrow.textures.length}\` textures for draw`);
-                    arrow.TEXTURE_INDEX = fapi.MAX_TEXTURE_INDEX - 1;
-                    arrow.textures.forEach((texture) => images.push([fapi.MAX_TEXTURE_INDEX++, texture]));
-                });
-            });
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const created = [];
-            canvas.width = 4096;
-            canvas.height = 4096;
-            let loaded = 0;
-            images.forEach(([index, src]) => {
-                let x = 0;
-                let y = 0;
-                index -= 1;
-                if (index < 128) {
-                    x = index % 8;
-                    y = ~~(index / 8);
-                } else {
-                    x = (index - 128) % 8 + 8;
-                    y = ~~((index - 128) / 16);
-                }
-                const img = new Image();
-                created.push(img);
-                img.src = src;
-                img.crossOrigin = '*';
-                img.onload = () => {
-                    ctx.drawImage(img, x * 256, y * 256);
-                    loaded++;
-                    if (loaded !== images.length) return;
-                    game.PlayerSettings.arrowAtlasImage = new Image;
-                    game.PlayerSettings.arrowAtlasImage.src = canvas.toDataURL('image/png');
-                    game.PlayerSettings.arrowAtlasImage.onload = () => {
-                        this.createArrowTexture(game.PlayerSettings.arrowAtlasImage);
-                        imodules.game.screenUpdated = true;
-                        modules.PlayerSettings.patched = true;
-                        console.log('Atlas patched!');
-                    }
-                    created.forEach((img) => img.remove());
-                }
-            })
-            // endregion
-        }
-        drawArrow(e, t, s, i, n, o, arrow) {
-            s -= 1;
-            if (arrow.type > fapi.BASIC_TYPES) {
-                const marrow = fapi.getArrowByType(arrow.type);
-                s = marrow.draw(arrow, marrow.TEXTURE_INDEX);
-            }
-            if (s === -1) return;
-            if (this.lastArrowType !== s) {
-                let x;
-                let y;
-                if (s < 128) {
-                    x = s % 8;
-                    y = ~~(s / 8);
-                } else {
-                    x = (s - 128) % 8 + 8;
-                    y = ~~((s - 128) / 16);
-                }
-                // TODO: Проверить работу 256 текстур
-                this.gl.uniform2f(this.arrowShader.getSpritePositionUniform(), x / 16, y / 16);
-                this.lastArrowType = s;
-            }
-            if (this.lastArrowSignal !== i) {
-                this.gl.uniform1i(this.arrowShader.getSignalUniform(), i);
-                this.lastArrowSignal = i;
-            }
-            if (this.lastArrowRotation !== n || this.lastArrowFlipped !== o) {
-                this.gl.uniform2f(this.arrowShader.getRotationUniform(), n / 2 * Math.PI, o ? 1 : 0);
-                this.lastArrowRotation = n;
-                this.lastArrowFlipped = o;
-            }
-            this.gl.uniform2f(this.arrowShader.getPositionUniform(), e, t);
-            this.gl.drawElements(this.gl.TRIANGLES, 6, this.gl.UNSIGNED_SHORT, 0);
-        }
-        prepareArrows(e) {
-            this.gl.useProgram(this.arrowShader.getProgram());
-            this.gl.bindTexture(this.gl.TEXTURE_2D, this.arrowAtlas);
-            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
-            this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-            this.gl.enableVertexAttribArray(this.arrowShader.getPositionAttribute());
-            this.gl.vertexAttribPointer(this.arrowShader.getPositionAttribute(), 2, this.gl.FLOAT, !1, 0, 0);
-            this.gl.uniform2f(this.arrowShader.getResolutionUniform(), this.gl.canvas.width, this.gl.canvas.height);
-            this.gl.uniform1f(this.arrowShader.getSizeUniform(), e);
-            this.gl.uniform1f(this.arrowShader.getSpriteSizeUniform(), 1 / 16);
+    ref('PlayerSettings', (playerSettings) => {
+        playerSettings.patched = false;
+        return playerSettings;
+    });
+    ref('PlayerUI', (playerUI) => class PlayerUI extends playerUI {
+        isMenuOpen() {
+            return null !== this.menu && !this.menu.getIsRemoved() || imodules.ModalHandler.openedAnyModal();
         }
     });
     ref('PlayerControls', (playerControls) => class PlayerControls extends playerControls {
@@ -1235,6 +818,7 @@
             }
             this.keyboardHandler.keyDownCallback = this.keyDownCallback;
             imodules.playercontrols = this;
+            this.activeCustomData = [];
         }
         update() {
             if (imodules.playercontrols.keyboardHandler.getKeyPressed('Escape') && imodules.ModalHandler.closeModal()) return;
@@ -1252,14 +836,14 @@
             }
         }
         pickArrow() {
-            if (!imodules.playeraccess.canPick) return;
+            if (!imodules.playerAccess.canPick) return;
             super.pickArrow();
             const e = this.getArrowByMousePosition();
             if (e !== undefined && e.custom_data !== undefined) this.activeCustomData = [...e.custom_data];
             else this.activeCustomData = -1;
         }
         setArrows(e, t) {
-            if (!imodules.playeraccess.canSetArrows) return;
+            if (!imodules.playerAccess.canSetArrows) return;
             // const a = imodules.playercontrols.getArrowByMousePosition();
             // if (a !== undefined && imodules.playercontrols.lsa !== undefined && imodules.playercontrols.lsa[0] === a.wx && imodules.playercontrols.lsa[1] === a.wy) return;
             super.setArrows(e, t);
@@ -1288,36 +872,36 @@
             ));
         }
     });
-    ref('PlayerUI', (playerUI) => class PlayerUI extends playerUI {
-        isMenuOpen() {
-            return null !== this.menu && !this.menu.getIsRemoved() || imodules.ModalHandler.openedAnyModal();
-        }
-    });
     ref('GameMap', (gameMap) => class GameMap extends gameMap {
         constructor() {
             super();
             if (imodules.gamemap !== undefined) return;
             imodules.gamemap = this;
         }
-        setArrowCustomData(x, y, custom_data) {
-            if (custom_data === undefined) custom_data = [];
-            const chunk = this.getChunkByArrowCoordinates(x, y);
-            if (chunk === undefined) return;
+        setArrowType(x, y, type, hz=true) {
+            const chunk = this.getOrCreateChunkByArrowCoordinates(x, y);
             const ax = x - chunk.x * modules.CHUNK_SIZE;
             const ay = y - chunk.y * modules.CHUNK_SIZE;
             const arrow = chunk.getArrow(ax, ay);
-            if (arrow !== undefined) {
-                arrow.refs = [];
-                arrow.lastRefs = [];
+            if (arrow.chunk === undefined) {
                 arrow.chunk = chunk;
                 arrow.x = ax;
                 arrow.y = ay;
                 arrow.wx = x;
                 arrow.wy = y;
-                if (!arrow.canBeEdited) return;
-                else if (modules.PlayerSettings.levelArrows.includes(arrow.type)) return;
-                arrow.custom_data = custom_data.slice(0);
             }
+            if (!hz || !arrow.canBeEdited || modules.PlayerSettings.levelArrows.includes(arrow.type) || arrow.type === type) return;
+            arrow.signal = 0;
+            arrow.type = type;
+        }
+        setArrowCustomData(x, y, custom_data) {
+            const chunk = this.getChunkByArrowCoordinates(x, y);
+            // if (chunk === undefined) return;
+            const ax = x - chunk.x * modules.CHUNK_SIZE;
+            const ay = y - chunk.y * modules.CHUNK_SIZE;
+            const arrow = chunk.getArrow(ax, ay);
+            if (!arrow.canBeEdited || modules.PlayerSettings.levelArrows.includes(arrow.type)) return;
+            arrow.custom_data = custom_data.slice(0);
         }
     });
     ref('SelectedMap', (selectedMap) => class SelectedMap extends selectedMap {
@@ -1327,7 +911,7 @@
         }
         setArrow(type) {
             super.setArrow(type);
-            let marrow = fapi.getArrowByType(type);
+            const marrow = fapi.getArrowByType(type);
             if (marrow === undefined) return;
             imodules.playercontrols.activeCustomData = marrow.custom_data.slice(0);
         }
@@ -1603,7 +1187,7 @@
             }
         }
         return Navigation;
-    })
+    });
     ref('MenuPage', (menuPage) => class MenuPage extends menuPage {
         constructor(e, t) {
             super(e, t);
@@ -1628,18 +1212,113 @@
                 pa(e);
             }
         }
-    })
-    ref('PlayerSettings', (playerSettings) => {
-        playerSettings.patched = false;
-        return playerSettings;
-    })
+    });
+    ref('Render', (render) => class Render extends render {
+        constructor(e) {
+            super(e);
+            imodules.render = this;
+            // region patch_atlas
+            if (modules.PlayerSettings.patched) return;
+            console.log('Atlas patching...');
+            const images = [[1, modules.PlayerSettings.arrowAtlasImage.src]];
+            fapi.mods.forEach((mod) => {
+                Object.values(mod.arrows).forEach((arrow) => {
+                    if (arrow.textures === undefined) arrow.textures = [arrow.icon_url];
+                    if (arrow.textures.length > 6) console.warn(`Arrow with id \`${arrow.id}\` from mod \`${arrow.mod.name}\` uses \`${arrow.textures.length}\` textures for draw`);
+                    arrow.TEXTURE_INDEX = fapi.MAX_TEXTURE_INDEX - 1;
+                    arrow.textures.forEach((texture) => images.push([fapi.MAX_TEXTURE_INDEX++, texture]));
+                });
+            });
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const created = [];
+            canvas.width = 4096;
+            canvas.height = 4096;
+            let loaded = 0;
+            images.forEach(([index, src]) => {
+                let x = 0;
+                let y = 0;
+                index -= 1;
+                if (index < 128) {
+                    x = index % 8;
+                    y = ~~(index / 8);
+                } else {
+                    x = (index - 128) % 8 + 8;
+                    y = ~~((index - 128) / 16);
+                }
+                const img = new Image();
+                created.push(img);
+                img.src = src;
+                img.crossOrigin = '*';
+                img.onload = () => {
+                    ctx.drawImage(img, x * 256, y * 256);
+                    loaded++;
+                    if (loaded !== images.length) return;
+                    game.PlayerSettings.arrowAtlasImage = new Image;
+                    game.PlayerSettings.arrowAtlasImage.src = canvas.toDataURL('image/png');
+                    game.PlayerSettings.arrowAtlasImage.onload = () => {
+                        this.createArrowTexture(game.PlayerSettings.arrowAtlasImage);
+                        imodules.game.screenUpdated = true;
+                        modules.PlayerSettings.patched = true;
+                        console.log('Atlas patched!');
+                    }
+                    created.forEach((img) => img.remove());
+                }
+            })
+            // endregion
+        }
+        drawArrow(e, t, s, i, n, o, arrow) {
+            s -= 1;
+            if (arrow.type > fapi.BASIC_TYPES) {
+                const marrow = fapi.getArrowByType(arrow.type);
+                s = marrow.draw(arrow, marrow.TEXTURE_INDEX);
+            }
+            if (s === -1) return;
+            if (this.lastArrowType !== s) {
+                let x;
+                let y;
+                if (s < 128) {
+                    x = s % 8;
+                    y = ~~(s / 8);
+                } else {
+                    x = (s - 128) % 8 + 8;
+                    y = ~~((s - 128) / 16);
+                }
+                // TODO: Проверить работу 256 текстур
+                this.gl.uniform2f(this.arrowShader.getSpritePositionUniform(), x / 16, y / 16);
+                this.lastArrowType = s;
+            }
+            if (this.lastArrowSignal !== i) {
+                this.gl.uniform1i(this.arrowShader.getSignalUniform(), i);
+                this.lastArrowSignal = i;
+            }
+            if (this.lastArrowRotation !== n || this.lastArrowFlipped !== o) {
+                this.gl.uniform2f(this.arrowShader.getRotationUniform(), n / 2 * Math.PI, o ? 1 : 0);
+                this.lastArrowRotation = n;
+                this.lastArrowFlipped = o;
+            }
+            this.gl.uniform2f(this.arrowShader.getPositionUniform(), e, t);
+            this.gl.drawElements(this.gl.TRIANGLES, 6, this.gl.UNSIGNED_SHORT, 0);
+        }
+        prepareArrows(e) {
+            this.gl.useProgram(this.arrowShader.getProgram());
+            this.gl.bindTexture(this.gl.TEXTURE_2D, this.arrowAtlas);
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
+            this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+            this.gl.enableVertexAttribArray(this.arrowShader.getPositionAttribute());
+            this.gl.vertexAttribPointer(this.arrowShader.getPositionAttribute(), 2, this.gl.FLOAT, !1, 0, 0);
+            this.gl.uniform2f(this.arrowShader.getResolutionUniform(), this.gl.canvas.width, this.gl.canvas.height);
+            this.gl.uniform1f(this.arrowShader.getSizeUniform(), e);
+            this.gl.uniform1f(this.arrowShader.getSpriteSizeUniform(), 1 / 16);
+        }
+    });
     ref('Game', (game) => class Game extends game {
         constructor(e, t, s) {
             super(e, t, s);
             imodules.game = this;
         }
         draw() {
-            if (imodules.render === undefined || modules.PlayerSettings.patched === undefined || modules.PlayerSettings.patched === false) return;
+            if (modules.PlayerSettings.patched !== true) return;
             this.updateFocus(),
             (this.drawPastedArrows || 0 !== this.selectedMap.getSelectedArrows().length) && (this.screenUpdated = !0),
             modules.PlayerSettings.framesToUpdate[this.updateSpeedLevel] > 1 && (this.screenUpdated = !0),
@@ -1720,5 +1399,428 @@
             this.frame++
         }
     });
+    ref('ChunkUpdates', (chunkUpdates) => new class ChunkUpdates {
+            /**
+             * Перенос текущих значений стрелочки в старые
+             * @param {Object.<string,any>} arrow Стрелочка
+             */
+            toLast(arrow) {
+                arrow.lastType = arrow.type;
+                arrow.lastSignal = arrow.signal;
+                arrow.lastRotation = arrow.rotation;
+                arrow.lastFlipped = arrow.flipped;
+            }
+            /**
+             * Добавляет единицу к количеству сигналов полученной стрелочки
+             * @param {Object.<string,any>} fromArrow Стрелочка которая передала сигнал
+             * @param {Object.<string,any> | void} arrow Стрелочка которая приняла сигнал
+             * @param {number} add Сила сигнала
+             */
+            updateCount(fromArrow, arrow, add=1) {
+                if (arrow !== undefined) {
+                    arrow.signalsCount += add;
+                    arrow.tempRefs.push(fromArrow);
+                }
+            }
+            /**
+             * Блокирует сигнал полученной стрелочки
+             * <br><b>Вызывать не в `transmit` а в `block` иначе не будет никакого эффекта!</b>
+             * @param {Object.<string,any> | void} arrow Стрелочка
+             */
+            blockSignal(arrow) {
+                if (arrow !== undefined) arrow.signal = 0;
+            }
+            /**
+             * Сложный вариант получения стрелочки
+             * @param {Object.<string,any>} chunk - Чанк
+             * @param {number} x Позиция по X
+             * @param {number} y Позиция по Y
+             * @param {number} rotation Поворот стрелочки ( 0 вверх | 1 вправо | 2 вниз | 3 влево )
+             * @param {boolean} flipped Зеркально расположена или нет
+             * @param {number} distance Дистанция от стрелочки ( отрицательное = вперёд | положительное = назад )
+             * @param {number} diagonal Дистанция от стрелочки в сторону ( положительное = вправо | отрицательное = влево )
+             * @return {Object.<string,any> | void} Возвращает стрелочку если находит её, а иначе `undefined`
+             */
+            getArrowAt(chunk, x, y, rotation, flipped, distance=-1, diagonal=0) {
+                if (flipped) diagonal = -diagonal;
+
+                if (rotation === 0) {
+                    y += distance;
+                    x += diagonal;
+                }
+                else if (rotation === 1) {
+                    y += diagonal;
+                    x -= distance;
+                }
+                else if (rotation === 2) {
+                    y -= distance;
+                    x -= diagonal;
+                }
+                else if (rotation === 3) {
+                    y -= diagonal;
+                    x += distance;
+                }
+
+                let rChunk = chunk;
+                if (x >= modules.CHUNK_SIZE) {
+                    if (y >= modules.CHUNK_SIZE) {
+                        rChunk = chunk.adjacentChunks[3];
+                        x -= modules.CHUNK_SIZE;
+                        y -= modules.CHUNK_SIZE;
+                    }
+                    else if (y < 0) {
+                        rChunk = chunk.adjacentChunks[1];
+                        x -= modules.CHUNK_SIZE;
+                        y += modules.CHUNK_SIZE;
+                    }
+                    else {
+                        rChunk = chunk.adjacentChunks[2];
+                        x -= modules.CHUNK_SIZE;
+                    }
+                }
+                else if (x < 0) {
+                    if (y < 0) {
+                        rChunk = chunk.adjacentChunks[7];
+                        x += modules.CHUNK_SIZE;
+                        y += modules.CHUNK_SIZE;
+                    } else if (y >= modules.CHUNK_SIZE) {
+                        rChunk = chunk.adjacentChunks[5];
+                        x += modules.CHUNK_SIZE;
+                        y -= modules.CHUNK_SIZE;
+                    } else {
+                        rChunk = chunk.adjacentChunks[6];
+                        x += modules.CHUNK_SIZE;
+                    }
+                }
+                else if (y < 0) {
+                    rChunk = chunk.adjacentChunks[0];
+                    y += modules.CHUNK_SIZE;
+                }
+                else if (y >= modules.CHUNK_SIZE) {
+                    rChunk = chunk.adjacentChunks[4];
+                    y -= modules.CHUNK_SIZE;
+                }
+                if (rChunk !== undefined) return rChunk.getArrow(x, y);
+            }
+            /**
+             * Простой вариант получения стрелочки
+             * @param {Object.<string,any>} arrow - Стрелочка
+             * @param {number} distance Дистанция от стрелочки ( отрицательное = вперёд | положительное = назад )
+             * @param {number} diagonal Дистанция от стрелочки в сторону ( отрицательное = вправо | положительное = влево )
+             * @return {Object.<string,any> | void} Возвращает стрелочку если находит её, а иначе `undefined`
+             */
+            sgetArrowAt(arrow, distance=-1, diagonal=0) {
+                if (arrow.flipped) diagonal = -diagonal;
+
+                let x = arrow.wx;
+                let y = arrow.wy;
+
+                if (arrow.rotation === 0) {
+                    y += distance;
+                    x += diagonal;
+                }
+                else if (arrow.rotation === 1) {
+                    y += diagonal;
+                    x -= distance;
+                }
+                else if (arrow.rotation === 2) {
+                    y -= distance;
+                    x -= diagonal;
+                }
+                else if (arrow.rotation === 3) {
+                    y -= diagonal;
+                    x += distance;
+                }
+                return imodules.gamemap.getArrow(x, y);;
+            }
+            /**
+             * Обновление сигналов стрелочек
+             * @param {Object.<string,any>} gameMap Карта
+             * @return {void} Ничего не возвращает
+             */
+            update(gameMap) {
+                const specificArrows = [];
+
+                gameMap.chunks.forEach((chunk) => {
+                    chunk.arrows.forEach((arrow) => {
+                        this.toLast(arrow);
+                        if (arrow.type === 0) return arrow.signalsCount = 0;
+                        else if (arrow.type === 3 || arrow.type === 23) specificArrows.push(arrow);
+                        else if (arrow.type > fapi.BASIC_TYPES) {
+                            const marrow = fapi.getArrowByType(arrow.type);
+                            if (marrow !== undefined) marrow.transmit(arrow);
+                            specificArrows.push(arrow);
+                        }
+                        else if (arrow.signal === 1) {
+                            if (arrow.type === 1 || arrow.type === 4 || arrow.type === 5 || arrow.type === 22) this.updateCount(arrow, this.sgetArrowAt(arrow));
+                            else if (arrow.type === 2 || arrow.type === 9) {
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, 1, 0));
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, 0, -1));
+                            }
+                            else if (arrow.type === 6) {
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, 1, 0));
+                            }
+                            else if (arrow.type === 7) {
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
+                            }
+                            else if (arrow.type === 8) {
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, 0, -1));
+                            }
+                        }
+                        else if (arrow.signal === 2) {
+                            if (arrow.type === 10) this.updateCount(arrow, this.sgetArrowAt(arrow, -2));
+                            else if (arrow.type === 11) this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 1));
+                            else if (arrow.type === 12) {
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, -2, 0));
+                            }
+                            else if (arrow.type === 13) {
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, -2, 0));
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
+                            }
+                            else if (arrow.type === 14) {
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 1));
+                            }
+                        }
+                        else if (arrow.signal === 3) {
+                            if (arrow.type === 15 || arrow.type === 16 || arrow.type === 17 || arrow.type === 18 || arrow.type === 19) this.updateCount(arrow, this.sgetArrowAt(arrow));
+                        }
+                        else if (arrow.signal === 5) {
+                            if (arrow.type === 20 || arrow.type === 24) this.updateCount(arrow, this.sgetArrowAt(arrow));
+                            if (arrow.type === 21) {
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, 1, 0));
+                                this.updateCount(arrow, this.sgetArrowAt(arrow, 0, -1));
+                            }
+                        }
+                        return;
+                        switch (arrow.type) {
+                            case 0:
+                                arrow.signalsCount = 0;
+                                return;
+                            case 1: // Стрелочка
+                            case 4: // Стрелочка задержки
+                            case 5: // Передатчик
+                            case 22: // Стрелочка из уровня #1
+                                if (arrow.signal === 1) this.updateCount(arrow, this.sgetArrowAt(arrow));
+                                break;
+                            case 2: // Источник
+                            case 9: // Тактовый источник
+                                if (arrow.signal === 1) {
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, 1, 0));
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, 0, -1));
+                                }
+                                break;
+                            case 6: // <>
+                                if (arrow.signal === 1) {
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, 1, 0));
+                                }
+                                break;
+                            case 7: // ^>
+                                if (arrow.signal === 1) {
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
+                                }
+                                break;
+                            case 8: // <^>
+                                if (arrow.signal === 1) {
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, 0, -1));
+                                }
+                                break;
+                            case 10: // Синяя стрелочка
+                                if (arrow.signal === 2) this.updateCount(arrow, this.sgetArrowAt(arrow, -2))
+                                break;
+                            case 11: // Диагональная стрелочка
+                                if (arrow.signal === 2) this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 1))
+                                break;
+                            case 12: // Синий курсор
+                                if (arrow.signal === 2) {
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, -2, 0));
+                                }
+                                break;
+                            case 13: // Полусиний курсор
+                                if (arrow.signal === 2) {
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, -2, 0));
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
+                                }
+                                break;
+                            case 14: // Синий курсор ЛКМ
+                                if (arrow.signal === 2) {
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 1));
+                                }
+                                break;
+                            case 15: // НЕ
+                            case 16: // И
+                            case 17: // Хуйня какая та
+                            case 18: // Ячейка памяти
+                            case 19: // И + Ячейка памяти
+                                if (arrow.signal === 3) this.updateCount(arrow, this.sgetArrowAt(arrow))
+                                break;
+                            case 20: // Рандомизатор
+                            case 24: // Направленная кнопка
+                                if (arrow.signal === 5) this.updateCount(arrow, this.sgetArrowAt(arrow));
+                                break;
+                            case 21: // Кнопка
+                                if (arrow.signal === 5) {
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, 1, 0));
+                                    this.updateCount(arrow, this.sgetArrowAt(arrow, 0, -1));
+                                }
+                                break;
+                            case 23: // Стрелочка из уровня #2
+                            case 3: // Блокер
+                                specificArrows.push(arrow)
+                                break;
+                            default:
+                                let marrow = fapi.getArrowByType(arrow.type);
+                                if (marrow !== undefined) marrow.transmit(arrow);
+                                specificArrows.push(arrow)
+                                break;
+                        }
+                    });
+                });
+                gameMap.chunks.forEach((chunk) => {
+                    chunk.arrows.forEach((arrow) => {
+                        const x = arrow.x;
+                        const y = arrow.y;
+                        arrow.refs = arrow.tempRefs;
+                        arrow.tempRefs = [];
+                        // arrow.signal = ~~(Math.random() * 5);
+                        // return;
+                        switch (arrow.type) {
+                            case 0:
+                                arrow.lastSignalsCount = arrow.signalsCount;
+                                arrow.signalsCount = 0;
+                                return;
+                            case 1:
+                            case 3:
+                            case 6:
+                            case 7:
+                            case 8:
+                            case 23:
+                                arrow.signal = arrow.signalsCount > 0 ? 1 : 0;
+                                break;
+                            case 2:
+                                arrow.signal = 1;
+                                break;
+                            case 4:
+                                if (arrow.signal === 2) arrow.signal = 1;
+                                else if (arrow.signal === 0 && arrow.signalsCount > 0) arrow.signal = 2;
+                                else if (arrow.signal === 1 && arrow.signalsCount > 0) arrow.signal = 1;
+                                else arrow.signal = 0;
+                                break;
+                            case 5:
+                                arrow.signal = 0;
+                                const backward_arrow = this.sgetArrowAt(arrow, 1);
+                                if (backward_arrow !== undefined) arrow.signal = backward_arrow.lastSignal !== 0 ? 1 : 0;
+                                break;
+                            case 9:
+                                if (arrow.signal === 0) arrow.signal = 1;
+                                else if (arrow.signal === 1) arrow.signal = 2;
+                                break;
+                            case 10:
+                            case 11:
+                            case 12:
+                            case 13:
+                            case 14:
+                                arrow.signal = arrow.signalsCount > 0 ? 2 : 0;
+                                break;
+                            case 15:
+                                arrow.signal = arrow.signalsCount > 0 ? 0 : 3;
+                                break;
+                            case 16:
+                                arrow.signal = arrow.signalsCount > 1 ? 3 : 0;
+                                break;
+                            case 17:
+                                arrow.signal = arrow.signalsCount % 2 === 1 ? 3 : 0;
+                                break;
+                            case 18:
+                                if (arrow.signalsCount > 1) arrow.signal = 3;
+                                else if (arrow.signalsCount === 1) arrow.signal = 0;
+                                break;
+                            case 19:
+                                if (arrow.signalsCount > 0) arrow.signal = arrow.signal === 3 ? 0 : 3;
+                                break;
+                            case 20:
+                                arrow.signal = (arrow.signalsCount > 0 && Math.random() < 0.5) ? 5 : 0;
+                                break;
+                            case 21:
+                                arrow.signal = 0;
+                                break;
+                            case 22:
+                                arrow.signal = arrow.signalsCount > 0 ? 1 : 0;
+                                const n = chunk.getLevelArrow(x, y);
+                                if (n !== undefined) n.update();
+                                break;
+                            case 24:
+                                arrow.signal = arrow.signalsCount > 0 ? 5 : 0;
+                                break;
+                            default:
+                                let marrow = fapi.getArrowByType(arrow.type);
+                                if (marrow !== undefined) marrow.update(arrow);
+                                break;
+                        }
+                        arrow.lastSignalsCount = arrow.signalsCount;
+                        arrow.signalsCount = 0;
+                    })
+                });
+                specificArrows.forEach((arrow) => {
+                    if (arrow.type === 3 && arrow.lastSignal === 1)
+                        this.blockSignal(this.sgetArrowAt(arrow));
+                    else if (arrow.type > fapi.BASIC_TYPES) {
+                        let marrow = fapi.getArrowByType(arrow.type);
+                        if (marrow !== undefined) marrow.block(arrow);
+                    }
+                });
+                if (!fapi.experimental.updateLevelArrow) return;
+                gameMap.chunks.forEach((chunk) => {
+                    chunk.levelArrows.forEach((levelArrow) => {
+                        if (levelArrow.type === 23) levelArrow.update();
+                    });
+                });
+            }
+            /**
+             * Стирает все сигналы стрелочек
+             * @param {Object.<string,any>} gameMap Карта
+             * @return {void} Ничего не возвращает
+             */
+            clearSignals(gameMap) {
+                gameMap.chunks.forEach((chunk) => {
+                    chunk.arrows.forEach((arrow) => {
+                        arrow.signal = 0;
+                        arrow.lastSignal = 0;
+                        arrow.signalsCount = 0;
+                    });
+                    chunk.levelArrows.forEach((levelArrow) => levelArrow.state = null);
+                });
+            }
+            /**
+             * Проверка поменялась ли стрелочка или нет
+             * @param {Object.<string,any>} arrow Стрелка
+             * @return {boolean} Изменилась ли стрелка или нет
+             */
+            wasArrowChanged(arrow) {
+                return arrow.signal !== arrow.lastSignal ||
+                       arrow.type !== arrow.lastType ||
+                       arrow.rotation !== arrow.lastRotation ||
+                       arrow.flipped !== arrow.lastFlipped;
+            }
+        });
     // endregion
 })();

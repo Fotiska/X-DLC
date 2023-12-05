@@ -147,7 +147,8 @@
                                     const i = e.getArrow(s, a);
                                     n(i), 1 === i.type ? 1 === i.signal && t(o(e, s, a, i.rotation, i.flipped)) : 2 === i.type ? 1 === i.signal && (t(o(e, s, a, i.rotation, i.flipped, -1, 0)), t(o(e, s, a, i.rotation, i.flipped, 0, 1)), t(o(e, s, a, i.rotation, i.flipped, 1, 0)), t(o(e, s, a, i.rotation, i.flipped, 0, -1))) : 4 === i.type || 5 === i.type ? 1 === i.signal && t(o(e, s, a, i.rotation, i.flipped)) : 6 === i.type ? 1 === i.signal && (t(o(e, s, a, i.rotation, i.flipped, -1, 0)), t(o(e, s, a, i.rotation, i.flipped, 1, 0))) : 7 === i.type ? 1 === i.signal && (t(o(e, s, a, i.rotation, i.flipped, -1, 0)), t(o(e, s, a, i.rotation, i.flipped, 0, 1))) : 8 === i.type ? 1 === i.signal && (t(o(e, s, a, i.rotation, i.flipped, -1, 0)), t(o(e, s, a, i.rotation, i.flipped, 0, 1)), t(o(e, s, a, i.rotation, i.flipped, 0, -1))) : 9 === i.type ? 1 === i.signal && (t(o(e, s, a, i.rotation, i.flipped, -1, 0)), t(o(e, s, a, i.rotation, i.flipped, 0, 1)), t(o(e, s, a, i.rotation, i.flipped, 1, 0)), t(o(e, s, a, i.rotation, i.flipped, 0, -1))) : 10 === i.type ? 2 === i.signal && t(o(e, s, a, i.rotation, i.flipped, -2)) : 11 === i.type ? 2 === i.signal && t(o(e, s, a, i.rotation, i.flipped, -1, 1)) : 12 === i.type ? 2 === i.signal && (t(o(e, s, a, i.rotation, i.flipped, -1, 0)), t(o(e, s, a, i.rotation, i.flipped, -2, 0))) : 13 === i.type ? 2 === i.signal && (t(o(e, s, a, i.rotation, i.flipped, -2, 0)), t(o(e, s, a, i.rotation, i.flipped, 0, 1))) : 14 === i.type ? 2 === i.signal && (t(o(e, s, a, i.rotation, i.flipped, -1, 0)), t(o(e, s, a, i.rotation, i.flipped, -1, 1))) : 15 === i.type || 16 === i.type || 17 === i.type || 18 === i.type || 19 === i.type ? 3 === i.signal && t(o(e, s, a, i.rotation, i.flipped)) : 20 === i.type ? 5 === i.signal && t(o(e, s, a, i.rotation, i.flipped)) : 21 === i.type ? 5 === i.signal && (t(o(e, s, a, i.rotation, i.flipped, -1, 0)), t(o(e, s, a, i.rotation, i.flipped, 0, 1)), t(o(e, s, a, i.rotation, i.flipped, 1, 0)), t(o(e, s, a, i.rotation, i.flipped, 0, -1))) : 22 === i.type ? 1 === i.signal && t(o(e, s, a, i.rotation, i.flipped)) : 24 === i.type && 5 === i.signal && t(o(e, s, a, i.rotation, i.flipped))
                                 }
-                        }(e))), e.chunks.forEach((e => function(e) {
+                        }(e)));
+                        e.chunks.forEach((e => function(e) {
                             for (let t = 0; t < i.CHUNK_SIZE; t++)
                                 for (let s = 0; s < i.CHUNK_SIZE; s++) {
                                     const i = e.getArrow(t, s);
@@ -181,17 +182,19 @@
                                     } else 23 === i.type ? i.signalsCount > 0 ? i.signal = 1 : i.signal = 0 : 24 === i.type && (i.signalsCount > 0 ? i.signal = 5 : i.signal = 0);
                                     i.signalsCount = 0
                                 }
-                        }(e))), e.chunks.forEach((e => function(e) {
+                        }(e)));
+                        e.chunks.forEach((e => function(e) {
                             for (let t = 0; t < i.CHUNK_SIZE; t++)
                                 for (let n = 0; n < i.CHUNK_SIZE; n++) {
                                     const i = e.getArrow(t, n);
                                     3 === i.type && 1 === i.lastSignal && s(o(e, t, n, i.rotation, i.flipped))
                                 }
-                        }(e))), e.chunks.forEach((e => function(e) {
+                        }(e)));
+                        e.chunks.forEach((e => function(e) {
                             e.levelArrows.forEach((e => {
                                 23 === e.arrow.type && e.update()
                             }))
-                        }(e)))
+                        }(e)));
                     }, e.wasArrowChanged = function(e) {
                         return e.type !== e.lastType || e.rotation !== e.lastRotation || e.flipped !== e.lastFlipped || e.signal !== e.lastSignal
                     }, e.clearSignals = function(e) {
