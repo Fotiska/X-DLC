@@ -717,6 +717,7 @@
             this.y = 0;
             this.wx = 0;
             this.wy = 0;
+            this.custom_data = [];
         }
     });
     ref('PlayerAccess', (playerAccess) => class PlayerAccess extends playerAccess {
