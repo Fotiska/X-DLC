@@ -2289,7 +2289,10 @@
                         this.updateTime = 0, this.drawTime = 0, this.updatesPerSecond = 0, this.drawsPerSecond = 0, this.focusingTime = 1, this.focusingSpeed = .017, this.focusingOffset = [0, 0], this.focusingScale = 80, this.startingOffset = [0, 0], this.startingScale = 80, this.focusing = !1, this.width = t, this.height = s, this.frame = 0, this.tick = 0, this.playing = !0, this.updateSpeedLevel = 0, this.pasteDirection = 0, this.isSelecting = !1, this.mousePosition = [0, 0], this.gameMap = new o.GameMap, this.selectedMap = new a.SelectedMap, this.scale = 40 * window.devicePixelRatio, this.offset = [0, 0], this.screenUpdated = !0, this.drawPastedArrows = !1, this.render = new r.Render(e)
                     }
                     draw() {
-                        this.updateFocus(), (this.drawPastedArrows || 0 !== this.selectedMap.getSelectedArrows().length) && (this.screenUpdated = !0), l.PlayerSettings.framesToUpdate[this.updateSpeedLevel] > 1 && (this.screenUpdated = !0), this.screenUpdated && this.render.drawBackground(this.scale, [-this.offset[0] / n.CELL_SIZE, -this.offset[1] / n.CELL_SIZE]);
+                        this.updateFocus();
+                        (this.drawPastedArrows || 0 !== this.selectedMap.getSelectedArrows().length) && (this.screenUpdated = !0);
+                        l.PlayerSettings.framesToUpdate[this.updateSpeedLevel] > 1 && (this.screenUpdated = !0);
+                        this.screenUpdated && this.render.drawBackground(this.scale, [-this.offset[0] / n.CELL_SIZE, -this.offset[1] / n.CELL_SIZE]);
                         const e = this.scale;
                         this.render.prepareArrows(e);
                         const t = ~~(-this.offset[0] / n.CELL_SIZE / 16) - 1,
