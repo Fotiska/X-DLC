@@ -65,21 +65,31 @@
             this.id = id;
             this.idname = idname;
             this.arrows = {};
-            this.showUI = (container) => undefined;
+            this.showUI = () => undefined;
         }
         registerArrow(arrowId) {
             if (this.arrows[arrowId] !== undefined)
                 throw new Error(`Arrow with id \`${arrowId}\` in mod \`${this.idname}\` already exists`);
             const arrow = new FModArrow();
             arrow.id = arrowId;
-            arrow.type = fapi.MAX_TYPE++;
+            fapi.ARROWS.push(arrow);
+            arrow.type = fapi.ARROWS.length;
             arrow.mod = this;
             this.arrows[arrowId] = arrow;
             return arrow;
         }
     }
-    class FModArrow {
+    class ArrowHandler {
+        constructor(update = () => undefined, transmit = () => undefined, block = () => undefined, draw = (arrow, index) => index) {
+            this.update = update;
+            this.transmit = transmit; // Вызывается после `update`
+            this.block = block; // Вызывается после `transmit`
+            this.draw = draw;
+        }
+    }
+    class FModArrow extends ArrowHandler {
         constructor() {
+            super();
             this.type = 0;
             this.id = 0;
             this.name = ["Unknown ( mod arrow )", "Unknown ( mod arrow )", "Unknown ( mod arrow )", "Unknown ( mod arrow )"]; // Как называется
@@ -93,12 +103,8 @@
             this.custom_data = [];
             this.TEXTURE_INDEX = 1;
 
-            this.update = () => undefined;
             this.click = () => undefined; // Вызывается при нажатии на стрелочку
             this.press = () => undefined; // Вызывается при зажатии стрелочки
-            this.transmit = () => undefined; // Вызывается после `update`
-            this.block = () => undefined; // Вызывается после `transmit`
-            this.draw = (arrow, index) => index;
             this.save_cd = (arrow) => arrow.custom_data;
             this.load_cd = (custom_data) => custom_data;
         }
@@ -337,8 +343,6 @@
     }
     class FAPI {
         constructor() {
-            this.FMODARROW = FModArrow;
-            this.MAX_TYPE = 25;
             this.VERSION = 2;
             this.MAX_TEXTURE_INDEX = 25;
             this.BASIC_TYPES = 24;
@@ -352,6 +356,201 @@
             }
             this.mods = [];
             this.pages = {};
+            // region ARROW HANDLERS
+            this.ARROWS = [];
+            this.ARROWS.push(new ArrowHandler(
+                () => undefined,
+                (arrow) => arrow.signalsCount = 0,
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 0 ? 1 : 0,
+                (arrow) => {
+                    if (arrow.signal === 1) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = 1,
+                (arrow) => {
+                    if (arrow.signal === 1) {
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 1, 0));
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 0, 1));
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, -1, 0));
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 0, -1));
+                    }
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 0 ? 1 : 0,
+                () => undefined,
+                (arrow) => routes.ChunkUpdates.blockSignal(routes.ChunkUpdates.sgetArrowAt(arrow)),
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => {
+                    if (arrow.signal === 2) arrow.signal = 1;
+                    else if (arrow.signalsCount > 0) {
+                        if (arrow.signal === 0) arrow.signal = 2;
+                        else if (arrow.signal === 1) arrow.signal = 1;
+                    }
+                    else arrow.signal = 0;
+                },
+                (arrow) => {
+                    if (arrow.signal === 1) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => {
+                    arrow.signal = 0;
+                    const backward_arrow = routes.ChunkUpdates.sgetArrowAt(arrow, 1);
+                    if (backward_arrow !== undefined) arrow.signal = backward_arrow.lastSignal !== 0 ? 1 : 0;
+                },
+                (arrow) => {
+                    if (arrow.signal === 1) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 0 ? 1 : 0,
+                (arrow) => {
+                    if (arrow.signal === 1) {
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, -1, 0));
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 1, 0));
+                    }
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 0 ? 1 : 0,
+                (arrow) => {
+                    if (arrow.signal === 1) {
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, -1, 0));
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 0, 1));
+                    }
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 0 ? 1 : 0,
+                (arrow) => {
+                    if (arrow.signal === 1) {
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, -1, 0));
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 0, 1));
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 0, -1));
+                    }
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => {
+                    if (arrow.signal === 0) arrow.signal = 1;
+                    else if (arrow.signal === 1) arrow.signal = 2;
+                },
+                (arrow) => {
+                    if (arrow.signal === 1) {
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 1, 0));
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 0, 1));
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, -1, 0));
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 0, -1));
+                    }
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 0 ? 2 : 0,
+                (arrow) => {
+                    if (arrow.signal === 2) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, -2));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 0 ? 2 : 0,
+                (arrow) => {
+                    if (arrow.signal === 2) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, -1, 1));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 0 ? 2 : 0,
+                (arrow) => {
+                    if (arrow.signal === 2) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, -1, 0));
+                    if (arrow.signal === 2) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, -2, 0));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 0 ? 2 : 0,
+                (arrow) => {
+                    if (arrow.signal === 2) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, -2, 0));
+                    if (arrow.signal === 2) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 0, 1));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 0 ? 2 : 0,
+                (arrow) => {
+                    if (arrow.signal === 2) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, -1, 0));
+                    if (arrow.signal === 2) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, -1, 1));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 0 ? 0 : 3,
+                (arrow) => {
+                    if (arrow.signal === 3) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 1 ? 3 : 0,
+                (arrow) => {
+                    if (arrow.signal === 3) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount % 2 === 1 ? 3 : 0,
+                (arrow) => {
+                    if (arrow.signal === 3) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => {
+                    if (arrow.signalsCount > 1) arrow.signal = 3;
+                    else if (arrow.signalsCount === 1) arrow.signal = 0;
+                },
+                (arrow) => {
+                    if (arrow.signal === 3) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => {
+                    if (arrow.signalsCount > 0) arrow.signal = arrow.signal === 3 ? 0 : 3;
+                },
+                (arrow) => {
+                    if (arrow.signal === 3) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = (arrow.signalsCount > 0 && Math.random() < 0.5) ? 5 : 0,
+                (arrow) => {
+                    if (arrow.signal === 5) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow));
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = 0,
+                (arrow) => {
+                    if (arrow.signal === 5) {
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow), 1, 0);
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow), 0, 1);
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow), -1, 0);
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow), 0, -1);
+                    }
+                }
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => {
+                    arrow.signal = arrow.signalsCount > 0 ? 1 : 0;
+                    const n = arrow.chunk.getLevelArrow(arrow.x, arrow.y);
+                    if (n !== undefined) n.update();
+                },
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 0 ? 1 : 0,
+            ));
+            this.ARROWS.push(new ArrowHandler(
+                (arrow) => arrow.signal = arrow.signalsCount > 0 ? 5 : 0,
+                (arrow) => {
+                    if (arrow.signal === 5) routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow));
+                }
+            ));
+            // endregion
         }
         /**
          * @param {number} type Айди стрелочки
@@ -452,7 +651,6 @@
                 modsToLoad.push([true, raw(this.jsonInput.value)]);
                 localStorage.setItem('mods', JSON.stringify(modsToLoad));
             }
-
             // this.experimentalAutoRotate = this.xdlcContainer.createContainer('50px', true);
             // this.experimentalAutoRotate.container.style.padding = '10px';
             // this.autoRotateLabel = this.experimentalAutoRotate.createText('Авто поворот стрелочки', '100%');
@@ -710,8 +908,6 @@
     ref('GameMap', (gameMap) => class GameMap extends gameMap {
         constructor() {
             super();
-            if (imodules.gamemap !== undefined) return;
-            imodules.gamemap = this;
         }
         setArrowType(x, y, type, hz=true) {
             const chunk = this.getOrCreateChunkByArrowCoordinates(x, y);
@@ -725,13 +921,14 @@
                 arrow.wx = x;
                 arrow.wy = y;
             }
-            if (!hz || !arrow.canBeEdited || modules.PlayerSettings.levelArrows.includes(arrow.type) || arrow.type === type) return;
+            if (!hz || arrow.type === type || !arrow.canBeEdited || modules.PlayerSettings.levelArrows.includes(arrow.type)) return;
             arrow.signal = 0;
             arrow.type = type;
+            arrow.handler = fapi.ARROWS[type];
         }
         setArrowCustomData(x, y, custom_data) {
             const chunk = this.getChunkByArrowCoordinates(x, y);
-            // if (chunk === undefined) return;
+            if (chunk === undefined) return;
             const ax = x - chunk.x * modules.CHUNK_SIZE;
             const ay = y - chunk.y * modules.CHUNK_SIZE;
             const arrow = chunk.getArrow(ax, ay);
@@ -879,160 +1076,32 @@
          * @return {void} Ничего не возвращает
          */
         update(gameMap) {
+            imodules.gamemap = gameMap;
             const chunks = gameMap.chunks;
-            const specificArrows = [];
-
             chunks.forEach((chunk) => {
-                chunk.arrows.forEach((arrow) => {
+                const arrows = chunk.arrows;
+                for (let ai = 0; ai < 256; ai++) {
+                    const arrow = arrows[ai];
                     this.toLast(arrow);
-                    if (arrow.type === 0) return arrow.signalsCount = 0;
-                    else if (arrow.type === 3) specificArrows.push(arrow);
-                    else if (arrow.type > fapi.BASIC_TYPES) {
-                        const marrow = fapi.getArrowByType(arrow.type);
-                        if (marrow !== undefined) marrow.transmit(arrow);
-                        specificArrows.push(arrow);
-                    }
-                    else if (arrow.signal === 1) {
-                        if (arrow.type === 1 || arrow.type === 4 || arrow.type === 5 || arrow.type === 22) this.updateCount(arrow, this.sgetArrowAt(arrow));
-                        else if (arrow.type === 2 || arrow.type === 9) {
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, 1, 0));
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, 0, -1));
-                        }
-                        else if (arrow.type === 6) {
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, 1, 0));
-                        }
-                        else if (arrow.type === 7) {
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
-                        }
-                        else if (arrow.type === 8) {
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, 0, -1));
-                        }
-                    }
-                    else if (arrow.signal === 2) {
-                        if (arrow.type === 10) this.updateCount(arrow, this.sgetArrowAt(arrow, -2));
-                        else if (arrow.type === 11) this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 1));
-                        else if (arrow.type === 12) {
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, -2, 0));
-                        }
-                        else if (arrow.type === 13) {
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, -2, 0));
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
-                        }
-                        else if (arrow.type === 14) {
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 1));
-                        }
-                    }
-                    else if (arrow.signal === 3) {
-                        if (arrow.type === 15 || arrow.type === 16 || arrow.type === 17 || arrow.type === 18 || arrow.type === 19) this.updateCount(arrow, this.sgetArrowAt(arrow));
-                    }
-                    else if (arrow.signal === 5) {
-                        if (arrow.type === 20 || arrow.type === 24) this.updateCount(arrow, this.sgetArrowAt(arrow));
-                        if (arrow.type === 21) {
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, -1, 0));
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, 0, 1));
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, 1, 0));
-                            this.updateCount(arrow, this.sgetArrowAt(arrow, 0, -1));
-                        }
-                    }
-                });
+                    arrow.handler.transmit(arrow);
+                }
             });
             chunks.forEach((chunk) => {
-                chunk.arrows.forEach((arrow) => {
+                const arrows = chunk.arrows;
+                for (let ai = 0; ai < 256; ai++) {
+                    const arrow = arrows[ai];
                     arrow.refs = arrow.tempRefs;
                     arrow.tempRefs = [];
-                    // arrow.signal = ~~(Math.random() * 5);
-                    // return;
-                    switch (arrow.type) {
-                        case 0:
-                            arrow.lastSignalsCount = arrow.signalsCount;
-                            arrow.signalsCount = 0;
-                            return;
-                        case 1:
-                        case 3:
-                        case 6:
-                        case 7:
-                        case 8:
-                        case 23:
-                            arrow.signal = arrow.signalsCount > 0 ? 1 : 0;
-                            break;
-                        case 2:
-                            arrow.signal = 1;
-                            break;
-                        case 4:
-                            if (arrow.signal === 2) arrow.signal = 1;
-                            else if (arrow.signal === 0 && arrow.signalsCount > 0) arrow.signal = 2;
-                            else if (arrow.signal === 1 && arrow.signalsCount > 0) arrow.signal = 1;
-                            else arrow.signal = 0;
-                            break;
-                        case 5:
-                            arrow.signal = 0;
-                            const backward_arrow = this.sgetArrowAt(arrow, 1);
-                            if (backward_arrow !== undefined) arrow.signal = backward_arrow.lastSignal !== 0 ? 1 : 0;
-                            break;
-                        case 9:
-                            if (arrow.signal === 0) arrow.signal = 1;
-                            else if (arrow.signal === 1) arrow.signal = 2;
-                            break;
-                        case 10:
-                        case 11:
-                        case 12:
-                        case 13:
-                        case 14:
-                            arrow.signal = arrow.signalsCount > 0 ? 2 : 0;
-                            break;
-                        case 15:
-                            arrow.signal = arrow.signalsCount > 0 ? 0 : 3;
-                            break;
-                        case 16:
-                            arrow.signal = arrow.signalsCount > 1 ? 3 : 0;
-                            break;
-                        case 17:
-                            arrow.signal = arrow.signalsCount % 2 === 1 ? 3 : 0;
-                            break;
-                        case 18:
-                            if (arrow.signalsCount > 1) arrow.signal = 3;
-                            else if (arrow.signalsCount === 1) arrow.signal = 0;
-                            break;
-                        case 19:
-                            if (arrow.signalsCount > 0) arrow.signal = arrow.signal === 3 ? 0 : 3;
-                            break;
-                        case 20:
-                            arrow.signal = (arrow.signalsCount > 0 && Math.random() < 0.5) ? 5 : 0;
-                            break;
-                        case 21:
-                            arrow.signal = 0;
-                            break;
-                        case 22:
-                            arrow.signal = arrow.signalsCount > 0 ? 1 : 0;
-                            const n = chunk.getLevelArrow(arrow.x, arrow.y);
-                            if (n !== undefined) n.update();
-                            break;
-                        case 24:
-                            arrow.signal = arrow.signalsCount > 0 ? 5 : 0;
-                            break;
-                        default:
-                            let marrow = fapi.getArrowByType(arrow.type);
-                            if (marrow !== undefined) marrow.update(arrow);
-                            break;
-                    }
+                    arrow.handler.update(arrow);
                     arrow.lastSignalsCount = arrow.signalsCount;
                     arrow.signalsCount = 0;
-                });
+                }
             });
-            specificArrows.forEach((arrow) => {
-                if (arrow.type === 3 && arrow.lastSignal === 1)
-                    this.blockSignal(this.sgetArrowAt(arrow));
-                else if (arrow.type > fapi.BASIC_TYPES) {
-                    let marrow = fapi.getArrowByType(arrow.type);
-                    if (marrow !== undefined) marrow.block(arrow);
+            chunks.forEach((chunk) => {
+                const arrows = chunk.arrows;
+                for (let ai = 0; ai < 256; ai++) {
+                    const arrow = arrows[ai];
+                    arrow.handler.block(arrow);
                 }
             });
             if (!fapi.experimental.updateLevelArrow) return;
@@ -1185,53 +1254,54 @@
 
         let chunks_count = data[s++] | data[s++] << 8;
         for (let _ = 0; _ < chunks_count; _++) {
-                let x = data[s++];
-                x |= (127 & data[s++]) << 8;
-                if ((data[s - 1] & 128) !== 0) x = -x;
+            let x = data[s++];
+            x |= (127 & data[s++]) << 8;
+            if ((data[s - 1] & 128) !== 0) x = -x;
 
-                let y = data[s++];
-                y |= (127 & data[s++]) << 8;
-                if ((data[s - 1] & 128) !== 0) y = -y;
+            let y = data[s++];
+            y |= (127 & data[s++]) << 8;
+            if ((data[s - 1] & 128) !== 0) y = -y;
 
-                const arrows_count = data[s++] + 1;
-                const chunk = gameMap.getOrCreateChunk(x, y)
-                for (let _ = 0; _ < arrows_count; _++) {
-                    let type = data[s++];
-                    let modArrow = type === 255;
-                    let mod;
-                    let marrow;
+            const arrows_count = data[s++] + 1;
+            const chunk = gameMap.getOrCreateChunk(x, y)
+            for (let _ = 0; _ < arrows_count; _++) {
+                let type = data[s++];
+                let modArrow = type === 255;
+                let mod;
+                let marrow;
+                if (modArrow) {
+                    type = data[s++];
+                    mod = modsDefine[data[s++]];
+                    marrow = mod.arrows[type];
+                    type = marrow.type;
+                }
+                const count = data[s++] + 1;
+                for (let adata = 0; adata < count; adata++) {
+                    const i = data[s++];
+                    const n = data[s++];
+                    const x = 15 & i;
+                    const y = i >> 4;
+                    const arrow = chunk.getArrow(x, y);
                     if (modArrow) {
-                        type = data[s++];
-                        mod = modsDefine[data[s++]];
-                        marrow = mod.arrows[type];
-                        type = marrow.type;
+                        let cdcount = data[s++];
+                        let cd = []
+                        for (let _ = 0; _ < cdcount; _++) cd.push(data[s++]);
+                        arrow.custom_data = fapi.getArrowByType(type).load_cd(cd);
                     }
-                    const count = data[s++] + 1;
-                    for (let adata = 0; adata < count; adata++) {
-                        const i = data[s++];
-                        const n = data[s++];
-                        const x = 15 & i;
-                        const y = i >> 4;
-                        const arrow = chunk.getArrow(x, y);
-                        if (modArrow) {
-                            let cdcount = data[s++];
-                            let cd = []
-                            for (let _ = 0; _ < cdcount; _++) cd.push(data[s++]);
-                            arrow.custom_data = fapi.getArrowByType(type).load_cd(cd);
-                        }
-                        arrow.refs = [];
-                        arrow.lastRefs = [];
-                        arrow.chunk = chunk;
-                        arrow.x = x;
-                        arrow.y = y;
-                        arrow.wx = x + chunk.x * modules.CHUNK_SIZE;
-                        arrow.wy = y + chunk.y * modules.CHUNK_SIZE;
-                        arrow.type = type;
-                        arrow.rotation = 3 & n;
-                        arrow.flipped = 0 !== (4 & n);
-                    }
+                    arrow.refs = [];
+                    arrow.lastRefs = [];
+                    arrow.chunk = chunk;
+                    arrow.x = x;
+                    arrow.y = y;
+                    arrow.wx = x + chunk.x * modules.CHUNK_SIZE;
+                    arrow.wy = y + chunk.y * modules.CHUNK_SIZE;
+                    arrow.type = type;
+                    arrow.rotation = 3 & n;
+                    arrow.flipped = 0 !== (4 & n);
+                    arrow.handler = fapi.ARROWS[type];
                 }
             }
+        }
     });
     ref('Arrow', (arrow) => class Arrow extends arrow {
         constructor() {
@@ -1244,6 +1314,7 @@
             this.wx = 0;
             this.wy = 0;
             this.custom_data = [];
+            this.handler = fapi.ARROWS[0];
         }
     });
     ref('PlayerAccess', (playerAccess) => class PlayerAccess extends playerAccess {
@@ -1412,10 +1483,9 @@
             this.flipState = false;
             this.arrowsToPutOriginal.clear();
             this.arrowsToPut.clear();
-
-            let t = Number.MAX_SAFE_INTEGER
+            let t = Number.MAX_SAFE_INTEGER;
             let s = Number.MAX_SAFE_INTEGER;
-            this.tempMap.clear(),
+            this.tempMap.clear();
             this.selectedArrows.forEach((sarrow) => {
                     const [n, o] = sarrow.split(",").map((e => parseInt(e, 10)));
                     const arrow = gameMap.getArrow(n, o);
@@ -1446,7 +1516,7 @@
         const pgan = arrowDescriptions.getArrowName;
         const pgaa = arrowDescriptions.getArrowActivation;
         const pgad = arrowDescriptions.getArrowAction;
-        arrowDescriptions.getArrowsCount = () => fapi.MAX_TYPE;
+        arrowDescriptions.getArrowsCount = () => fapi.ARROWS.length;
         arrowDescriptions.getArrowName = (type) => {
             if (type <= fapi.BASIC_TYPES) return pgan(type);
             const index = modules.LangSettings.languages.indexOf(modules.LangSettings.getLanguage());
@@ -1595,11 +1665,7 @@
             // endregion
         }
         drawArrow(e, t, s, i, n, o, arrow) {
-            s -= 1;
-            if (arrow.type > fapi.BASIC_TYPES) {
-                const marrow = fapi.getArrowByType(arrow.type);
-                s = marrow.draw(arrow, marrow.TEXTURE_INDEX);
-            }
+            s = arrow.handler.draw(arrow, s - 1);
             if (s === -1) return;
             if (this.lastArrowType !== s) {
                 let x;
@@ -1638,95 +1704,162 @@
             this.gl.uniform1f(this.arrowShader.getSizeUniform(), e);
             this.gl.uniform1f(this.arrowShader.getSpriteSizeUniform(), 1 / 16);
         }
-    }); // Возможно из-за него просадки фпс
+    });
     ref('Game', (game) => class Game extends game {
         constructor(e, t, s) {
             super(e, t, s);
             imodules.game = this;
         }
-        draw() {
-            // TODO: МОЖНО ЛЮТО ОПТИМИЗИРОВАТЬ
+        draw() { // TODO: Исправить эту хуйню
             if (modules.PlayerSettings.patched !== true) return;
             this.updateFocus();
-            const zodc = this.offset[0] / modules.CELL_SIZE;
-            const oodc = this.offset[1] / modules.CELL_SIZE;
-            const zodcms = zodc * this.scale;
-            const oodcms = oodc * this.scale;
-            const zodcs = ~~(-zodc / 16);
-            const oodcs = ~~(-oodc / 16);
-            const sds = this.scale / 16;
-            const ffms = 0.025 * this.scale;
-            const zodcmsaf = zodcms + ffms;
-            const oodcmsaf = oodcms + ffms;
-            if (this.drawPastedArrows || 0 !== this.selectedMap.getSelectedArrows().length || modules.PlayerSettings.framesToUpdate[this.updateSpeedLevel] > 1) this.screenUpdated = true;
-            if (this.screenUpdated) this.render.drawBackground(this.scale, [-zodc, -oodc]);
-            this.render.prepareArrows(this.scale);
-            const t = zodcs - 1;
-            const s = oodcs - 1;
-            const o = zodcs + this.width / sds;
-            const a = oodcs + this.height / sds;
-            this.render.setArrowAlpha(1);
-            this.gameMap.chunks.forEach((chunk) => {
-                if (chunk.x < t || chunk.x > o || chunk.y < s || chunk.y > a) return;
-                chunk.arrows.forEach((arrow) => {
-                    if (arrow.type !== 0 && (this.screenUpdated || modules.ChunkUpdates.wasArrowChanged(arrow))) {
-                        const i = arrow.wx * this.scale + zodcmsaf;
-                        const a = arrow.wy * this.scale + oodcmsaf;
-                        this.render.drawArrow(i, a, arrow.type, arrow.signal, arrow.rotation, arrow.flipped, arrow);
-                    }
-                });
-            });
-            if (performance.now() - this.drawTime > 1e3 && (this.drawTime = performance.now(), this.drawsPerSecond = 0),
-            this.drawsPerSecond++,
-            this.drawPastedArrows) {
-                this.render.setArrowAlpha(.5);
-                const e = this.selectedMap.getCopiedArrows();
-                0 !== e.size && (this.screenUpdated = !0),
-                e.forEach(((e,t)=>{
-                    const [s,i] = t.split(",").map((e=>parseInt(e, 10)));
-                    let o = s
-                      , a = i
-                      , r = 0;
-                    1 === this.pasteDirection ? (o = -i,
-                    a = s,
-                    r = 1) : 2 === this.pasteDirection ? (o = -s,
-                    a = -i,
-                    r = 2) : 3 === this.pasteDirection && (o = i,
-                    a = -s,
-                    r = 3);
-                    const l = (o + this.mousePosition[0]) * this.scale + this.offset[0] * this.scale / modules.CELL_SIZE + .025 * this.scale
-                      , h = (a + this.mousePosition[1]) * this.scale + this.offset[1] * this.scale / modules.CELL_SIZE + .025 * this.scale;
-                    this.render.drawArrow(l, h, e.type, e.signal, (e.rotation + r) % 4, e.flipped, e)
-                }
-                ))
-            }
-            if (this.render.disableArrows(),
-            this.render.prepareSolidColor(),
-            this.render.setSolidColor(.25, .5, 1, .25),
-            this.selectedMap.getSelectedArrows().forEach((e=>{
-                const t = e.split(",").map((e=>parseInt(e, 10)))
-                  , s = t[0] * this.scale + this.offset[0] * this.scale / modules.CELL_SIZE
-                  , i = t[1] * this.scale + this.offset[1] * this.scale / modules.CELL_SIZE
-                  , o = this.scale + .05 * this.scale;
-                this.render.drawSolidColor(s, i, o, o)
-            }
-            )),
-            this.isSelecting) {
-                this.render.prepareSolidColor(),
-                this.render.setSolidColor(.5, .5, .75, .25);
-                const e = this.selectedMap.getCurrentSelectedArea();
-                if (void 0 !== e) {
-                    const t = e[0] * this.scale + this.offset[0] * this.scale / modules.CELL_SIZE
-                      , s = e[1] * this.scale + this.offset[1] * this.scale / modules.CELL_SIZE
-                      , i = e[2] - e[0]
-                      , o = e[3] - e[1];
-                    this.render.drawSolidColor(t, s, i * this.scale, o * this.scale)
-                }
-            }
-            this.render.disableSolidColor(),
-            this.screenUpdated = !1,
-            this.frame++
+                        (this.drawPastedArrows || 0 !== this.selectedMap.getSelectedArrows().length) && (this.screenUpdated = !0);
+                        modules.PlayerSettings.framesToUpdate[this.updateSpeedLevel] > 1 && (this.screenUpdated = !0);
+                        this.screenUpdated && this.render.drawBackground(this.scale, [-this.offset[0] / modules.CELL_SIZE, -this.offset[1] / modules.CELL_SIZE]);
+                        const e = this.scale;
+                        this.render.prepareArrows(e);
+                        const t = ~~(-this.offset[0] / modules.CELL_SIZE / 16) - 1,
+                            s = ~~(-this.offset[1] / modules.CELL_SIZE / 16) - 1,
+                            o = ~~(-this.offset[0] / modules.CELL_SIZE / 16 + this.width / this.scale / 16),
+                            a = ~~(-this.offset[1] / modules.CELL_SIZE / 16 + this.height / this.scale / 16);
+                        if (this.render.setArrowAlpha(1), this.gameMap.chunks.forEach((e => {
+                                if (!(e.x >= t && e.x <= o && e.y >= s && e.y <= a)) return;
+                                const r = this.offset[0] * this.scale / modules.CELL_SIZE + .025 * this.scale,
+                                    l = this.offset[1] * this.scale / modules.CELL_SIZE + .025 * this.scale;
+                                for (let t = 0; t < modules.CHUNK_SIZE; t++)
+                                    for (let s = 0; s < modules.CHUNK_SIZE; s++) {
+                                        const o = e.getArrow(t, s);
+                                        if (o.type > 0 && (this.screenUpdated || modules.ChunkUpdates.wasArrowChanged(o))) {
+                                            const i = (e.x * modules.CHUNK_SIZE + t) * this.scale + r,
+                                                a = (e.y * modules.CHUNK_SIZE + s) * this.scale + l;
+                                            this.render.drawArrow(i, a, o.type, o.signal, o.rotation, o.flipped, o)
+                                        }
+                                    }
+                            })), performance.now() - this.drawTime > 1e3 && (this.drawTime = performance.now(), this.drawsPerSecond = 0), this.drawsPerSecond++, this.drawPastedArrows) {
+                            this.render.setArrowAlpha(.5);
+                            const e = this.selectedMap.getCopiedArrows();
+                            0 !== e.size && (this.screenUpdated = !0), e.forEach(((e, t) => {
+                                const [s, i] = t.split(",").map((e => parseInt(e, 10)));
+                                let o = s,
+                                    a = i,
+                                    r = 0;
+                                1 === this.pasteDirection ? (o = -i, a = s, r = 1) : 2 === this.pasteDirection ? (o = -s, a = -i, r = 2) : 3 === this.pasteDirection && (o = i, a = -s, r = 3);
+                                const l = (o + this.mousePosition[0]) * this.scale + this.offset[0] * this.scale / n.CELL_SIZE + .025 * this.scale,
+                                    h = (a + this.mousePosition[1]) * this.scale + this.offset[1] * this.scale / n.CELL_SIZE + .025 * this.scale;
+                                this.render.drawArrow(l, h, e.type, e.signal, (e.rotation + r) % 4, e.flipped, o)
+                            }))
+                        }
+                        if (this.render.disableArrows(), this.render.prepareSolidColor(), this.render.setSolidColor(.25, .5, 1, .25), this.selectedMap.getSelectedArrows().forEach((e => {
+                                const t = e.split(",").map((e => parseInt(e, 10))),
+                                    s = t[0] * this.scale + this.offset[0] * this.scale / modules.CELL_SIZE,
+                                    i = t[1] * this.scale + this.offset[1] * this.scale / modules.CELL_SIZE,
+                                    o = this.scale + .05 * this.scale;
+                                this.render.drawSolidColor(s, i, o, o)
+                            })), this.isSelecting) {
+                            this.render.prepareSolidColor(), this.render.setSolidColor(.5, .5, .75, .25);
+                            const e = this.selectedMap.getCurrentSelectedArea();
+                            if (void 0 !== e) {
+                                const t = e[0] * this.scale + this.offset[0] * this.scale / modules.CELL_SIZE,
+                                    s = e[1] * this.scale + this.offset[1] * this.scale / modules.CELL_SIZE,
+                                    i = e[2] - e[0],
+                                    o = e[3] - e[1];
+                                this.render.drawSolidColor(t, s, i * this.scale, o * this.scale)
+                            }
+                        }
+                        this.render.disableSolidColor(), this.screenUpdated = !1, this.frame++
+
+            // if (modules.PlayerSettings.patched !== true) return;
+            // this.updateFocus();
+            // const zodc = this.offset[0] / modules.CELL_SIZE;
+            // const oodc = this.offset[1] / modules.CELL_SIZE;
+            // const zodcms = zodc * this.scale;
+            // const oodcms = oodc * this.scale;
+            // const zodcs = ~~(-zodc / 16);
+            // const oodcs = ~~(-oodc / 16);
+            // const sds = this.scale / 16;
+            // const ffms = 0.025 * this.scale;
+            // const cffms = 0.05 * this.scale;
+            // const zodcmsaf = zodcms + ffms;
+            // const oodcmsaf = oodcms + ffms;
+            // if (this.drawPastedArrows || 0 !== this.selectedMap.getSelectedArrows().length || modules.PlayerSettings.framesToUpdate[this.updateSpeedLevel] > 1) this.screenUpdated = true;
+            // if (this.screenUpdated) this.render.drawBackground(this.scale, [-zodc, -oodc]);
+            // this.render.prepareArrows(this.scale);
+            // const t = zodcs - 1;
+            // const s = oodcs - 1;
+            // const o = zodcs + this.width / sds;
+            // const a = oodcs + this.height / sds;
+            // this.render.setArrowAlpha(1);
+            // this.gameMap.chunks.forEach((chunk) => {
+            //     if (chunk.x < t || chunk.x > o || chunk.y < s || chunk.y > a) return;
+            //     for (let i = 0; i < chunk.arrows.length; i++) {
+            //         const arrow = chunk.arrows[i];
+            //         if (arrow.type !== 0 && (this.screenUpdated || modules.ChunkUpdates.wasArrowChanged(arrow))) {
+            //             const i = arrow.wx * this.scale + zodcmsaf;
+            //             const a = arrow.wy * this.scale + oodcmsaf;
+            //             this.render.drawArrow(i, a, arrow.type, arrow.signal, arrow.rotation, arrow.flipped, arrow);
+            //         }
+            //     }
+            // });
+            // if (performance.now() - this.drawTime > 1e3) {
+            //     this.drawTime = performance.now();
+            //     this.drawsPerSecond = 0;
+            // }
+            // this.drawsPerSecond++;
+            // if (this.drawPastedArrows) {
+            //     this.render.setArrowAlpha(0.5);
+            //     const e = this.selectedMap.getCopiedArrows();
+            //     if (e.size !== 0) this.screenUpdated = true;
+            //     e.forEach((e, t) => {
+            //         const [s, i] = t.split(",").map((e) => parseInt(e, 10));
+            //         let o = s;
+            //         let a = i;
+            //         let r = 0;
+            //         if (this.pasteDirection === 1) {
+            //             o = -i;
+            //             a = s;
+            //             r = 1;
+            //         }
+            //         else if (this.pasteDirection === 2) {
+            //             o = -s;
+            //             a = -i;
+            //             r = 2;
+            //         }
+            //         else if (this.pasteDirection === 3) {
+            //             o = i;
+            //             a = -s;
+            //             r = 3;
+            //         }
+            //         const l = (o + this.mousePosition[0]) * this.scale + zodcmsaf;
+            //         const h = (a + this.mousePosition[1]) * this.scale + oodcmsaf;
+            //         this.render.drawArrow(l, h, e.type, e.signal, (e.rotation + r) % 4, e.flipped, e)
+            //     });
+            // }
+            // this.render.disableArrows();
+            // this.render.prepareSolidColor();
+            // this.render.setSolidColor(0.25, 0.5, 1, 0.25);
+            // this.selectedMap.getSelectedArrows().forEach((e) => {
+            //     const t = e.split(",");
+            //     const s = parseInt(t[0], 10) * this.scale + zodc;
+            //     const i = parseInt(t[1], 10) * this.scale + oodc;
+            //     const o = this.scale + cffms;
+            //     this.render.drawSolidColor(s, i, o, o)
+            // });
+            // if (this.isSelecting) {
+            //     this.render.prepareSolidColor();
+            //     this.render.setSolidColor(0.5, 0.5, 0.75, 0.25);
+            //     const e = this.selectedMap.getCurrentSelectedArea();
+            //     if (e !== null) {
+            //         const t = e[0] * this.scale + zodc;
+            //         const s = e[1] * this.scale + oodc;
+            //         const i = e[2] - e[0]
+            //         const o = e[3] - e[1];
+            //         this.render.drawSolidColor(t, s, i * this.scale, o * this.scale)
+            //     }
+            // }
+            // this.render.disableSolidColor();
+            // this.screenUpdated = false;
+            // this.frame++;
         }
-    }); // Возможно из-за него просадки фпс
+    });
     // endregion
 })();
