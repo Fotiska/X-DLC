@@ -1,5 +1,3 @@
-// TODO: Изменить свич на массив в `ChunkUpdates`
-
 (() => {
     // region Getting Modules
     const modules = {};
@@ -55,6 +53,43 @@
         }
     }
     // endregion
+    // region Utilities
+    function obtainSpreadsheetData(sheetId, gid) {
+        const url = 'https://docs.google.com/spreadsheets/d/e/' + sheetId + '/pub?gid=' + gid + '&single=true&output=tsv';
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url, false)
+        xhr.send();
+        return xhr.responseText;
+    }
+    function obtainModManifest(url) {
+        try {
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", prettifyModUrl(url), false);
+            xhr.send();
+            const json = JSON.parse(xhr.responseText);
+            if (json.name === undefined) json.name = 'Неизвестный';
+            if (json.author === undefined) json.author = 'Неизвестный';
+            if (json.icon === undefined) json.icon = 'Unknown';
+            if (json.description === undefined) json.description = 'Описания нету';
+            if (json.dependencies === undefined) json.dependencies = [];
+
+            if (json.id === undefined) return 1;
+            else if (json.script === undefined) return 1;
+            else if (json.xdlcversion === undefined) return 1;
+            return json;
+        } catch {
+            return undefined;
+        }
+    }
+    /*
+        0 - Успешно получен
+        1 - Ошибка
+     */
+    function prettifyModUrl(path) {
+        if (path.includes('githubusercontent')) return path;
+        else return path.replace('github', 'raw.githubusercontent').replace('blob/', '');
+    }
+    // endregion
     // region Classes
     class FMod {
         constructor(id, idname) {
@@ -73,7 +108,7 @@
             const arrow = new FModArrow();
             arrow.id = arrowId;
             fapi.ARROWS.push(arrow);
-            arrow.type = fapi.ARROWS.length;
+            arrow.type = fapi.ARROWS.length - 1;
             arrow.mod = this;
             this.arrows[arrowId] = arrow;
             return arrow;
@@ -152,7 +187,7 @@
             const txt = document.createElement('div');
             txt.style.fontFamily = 'var(--font)';
             txt.style.color = '#fff';
-            txt.textContent = text;
+            txt.innerHTML = text;
             this.container.appendChild(txt);
             this.containers.push([txt, size]);
             this.updateContainers();
@@ -382,7 +417,9 @@
             this.ARROWS.push(new ArrowHandler(
                 (arrow) => arrow.signal = arrow.signalsCount > 0 ? 1 : 0,
                 () => undefined,
-                (arrow) => routes.ChunkUpdates.blockSignal(routes.ChunkUpdates.sgetArrowAt(arrow)),
+                (arrow) => {
+                    if (arrow.lastSignal === 1) routes.ChunkUpdates.blockSignal(routes.ChunkUpdates.sgetArrowAt(arrow));
+                },
             ));
             this.ARROWS.push(new ArrowHandler(
                 (arrow) => {
@@ -527,10 +564,10 @@
                 (arrow) => arrow.signal = 0,
                 (arrow) => {
                     if (arrow.signal === 5) {
-                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow), 1, 0);
-                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow), 0, 1);
-                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow), -1, 0);
-                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow), 0, -1);
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 1, 0));
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 0, 1));
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, -1, 0));
+                        routes.ChunkUpdates.updateCount(arrow, routes.ChunkUpdates.sgetArrowAt(arrow, 0, -1));
                     }
                 }
             ));
@@ -622,22 +659,8 @@
             this.loadBtn.style.backgroundColor = 'var(--light-green)';
             this.loadBtn.onclick = () => {
                 if (this.jsonInput.value === '') return;
-                const xhr = new XMLHttpRequest();
-                xhr.open("GET", raw(this.jsonInput.value), false);
-                xhr.send();
-                let modJson;
-                try {
-                    modJson = JSON.parse(xhr.responseText)
-                    if (modJson.name === undefined) modJson.name = 'Unknown';
-                    if (modJson.author === undefined) modJson.author = 'Unknown';
-                    if (modJson.icon === undefined) modJson.icon = 'Unknown';
-                    if (modJson.dependencies === undefined) modJson.dependencies = [];
-                    if (modJson.id === undefined) modJson = false;
-                    else if (modJson.script === undefined) modJson = false;
-                } catch {
-                    modJson = false;
-                }
-                if (xhr.status !== 200 || !modJson || Object.keys(this.modsInfo).includes(modJson.id)) {
+                const manifest = obtainModManifest(this.jsonInput.value);
+                if (manifest === undefined) {
                     this.loadBtn.style.backgroundColor = 'var(--light-red)';
                     this.loadBtn.textContent = 'Ошибка';
                     setTimeout(() => {
@@ -646,9 +669,18 @@
                     }, 250);
                     return;
                 }
-                loadResults[modJson.id] = {'manifest': modJson, 'code': 5};
-                this.drawMod(loadResults[modJson.id]);
-                modsToLoad.push([true, raw(this.jsonInput.value)]);
+                else if (loadResults[manifest.id] !== undefined) {
+                    this.loadBtn.style.backgroundColor = 'var(--light-blue)';
+                    this.loadBtn.textContent = 'Уже установлен';
+                    setTimeout(() => {
+                        this.loadBtn.style.backgroundColor = 'var(--light-green)';
+                        this.loadBtn.textContent = 'Загрузить';
+                    }, 250);
+                    return;
+                }
+                loadResults[manifest.id] = {'manifest': manifest, 'code': 5};
+                this.drawMod(loadResults[manifest.id]);
+                modsToLoad.push([true, prettifyModUrl(this.jsonInput.value)]);
                 localStorage.setItem('mods', JSON.stringify(modsToLoad));
             }
             // this.experimentalAutoRotate = this.xdlcContainer.createContainer('50px', true);
@@ -672,6 +704,12 @@
             modContainer.container.style.padding = '10px';
             modContainer.container.style.marginBottom = '15px';
             modContainer.container.style.cursor = 'pointer';
+            modContainer.container.onclick = () => {
+                if (this.selectedMod === mod.id || loadResults[mod.id].code === 7) return;
+                this.selectedMod = mod.id;
+                this.updateSelectedMods()
+                this.showModInfo(loadResult);
+            }
             const image = modContainer.createImage(mod.icon, '80px');
             image.style.backgroundColor = 'var(--background)';
             image.style.borderRadius = '20px';
@@ -687,7 +725,7 @@
                 statusText = 'Загружен!';
                 statusColor = 'var(--light-green)';
             } else if (code === 5) {
-                statusText = 'Требует перезагрузки';
+                statusText = 'Требуется перезагрузка';
                 statusColor = 'var(--light-blue)';
             } else if (code === 0) {
                 statusText = 'Мод не найден';
@@ -704,32 +742,31 @@
             } else if (code === 6) {
                 statusText = 'Сделан на старом `X-DLC`';
                 statusColor = 'var(--light-red)';
+            } else if (code === 7) {
+                statusText = 'Удалён';
+                statusColor = 'var(--light-red)';
+                modContainer.container.style.cursor = 'not-allowed';
+                modContainer.container.style.backgroundColor = 'var(--dark-blue)'
             }
             const status = nameContainer.createText(statusText, 50);
             status.style.fontFamily = 'var(--font)';
             status.style.fontWeight = '400';
             status.style.fontSize = '16px';
             status.style.color = statusColor;
-            modContainer.container.onclick = () => {
-                if (this.selectedMod === mod.id) return;
-                this.selectedMod = mod.id;
-                this.updateSelectedMods()
-                this.showModInfo(loadResult);
-            }
             this.modsInfo[mod.id] = [modContainer.container, status, mod];
         }
         updateSelectedMods() {
             Object.values(this.modsInfo).forEach(([modContainer, status, mod]) => {
-                if (modContainer.style.backgroundColor === 'var(--dark-blue)') {
+                const code = loadResults[mod.id].code;
+                if (code === 7) {
+                    status.textContent = 'Удалён';
+                    status.style.color = 'var(--light-red)';
+                    modContainer.style.backgroundColor = 'var(--dark-blue)';
                     modContainer.style.cursor = 'not-allowed';
-                    return;
-                }
-
-                if (mod.id === this.selectedMod) {
+                } else if (mod.id === this.selectedMod) {
                     modContainer.style.backgroundColor = 'var(--background)';
                     modContainer.style.cursor = 'default';
-                }
-                else {
+                } else {
                     modContainer.style.backgroundColor = 'var(--blue)';
                     modContainer.style.cursor = 'pointer';
                 }
@@ -753,29 +790,10 @@
             del.style.borderRadius = '8px';
             del.style.cursor = 'pointer';
             del.onclick = () => {
-                loadResults[mod.id].code = 5;
-                this.modsInfo[mod.id][1].textContent = 'Удалён';
-                this.modsInfo[mod.id][1].style.color = 'var(--light-red)';
-                this.modsInfo[mod.id][0].style.backgroundColor = 'var(--dark-blue)';
+                loadResults[mod.id].code = 7;
                 modsToLoad.forEach((pair) => {
-                    const xhr = new XMLHttpRequest();
-                    xhr.open("GET", raw(pair[1]), false);
-                    xhr.send();
-                    let modJson;
-                    try {
-                        modJson = JSON.parse(xhr.responseText)
-                        if (modJson.name === undefined) modJson.name = 'Unknown';
-                        if (modJson.author === undefined) modJson.author = 'Unknown';
-                        if (modJson.icon === undefined) modJson.icon = 'Unknown';
-                        if (modJson.dependencies === undefined) modJson.dependencies = [];
-
-                        if (modJson.id === undefined) modJson = false;
-                        else if (modJson.script === undefined) modJson = false;
-                    } catch {
-                        modJson = false;
-                    }
-                    if (xhr.status !== 200 || !modJson || modJson.id === mod.id)
-                        modsToLoad.splice(modsToLoad.indexOf(pair), 1);
+                    const manifest = obtainModManifest(pair[1]);
+                    if (manifest !== undefined && manifest.id === mod.id) modsToLoad.splice(modsToLoad.indexOf(pair), 1);
                 });
                 this.closeModInfo();
                 localStorage.setItem('mods', JSON.stringify(modsToLoad));
@@ -788,6 +806,191 @@
         }
         closeModInfo() {
             this.infoContainer.clear();
+        }
+    }
+    new class WorkshopPage extends FModPage {
+        constructor() {
+            super('x_dlc.community');
+            this.translates = ['Community', 'Сообщество', 'Сообщество', 'Сообщество'];
+            this.drawCallback = () => undefined;
+            this.allMods = [];
+            this.allMaps = [];
+            this.sync();
+        }
+        sync() {
+            this.allMods = []
+            this.allMaps = []
+            const modsData = obtainSpreadsheetData('2PACX-1vQK8mXB2urT65dr12o77jSmdHk1SSfF3qDY5PUXwWRLww-_TSjoEVsDOw22q9_PHSYiYx31l9pdPUzP', '0').split('\n');
+            modsData.forEach((modUrl) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open("GET", modUrl, false);
+                xhr.send();
+                if (xhr.status !== 200) return;
+                const mod = JSON.parse(xhr.responseText);
+                mod.source = modUrl;
+                this.allMods.push(mod);
+            });
+            const mapsData = obtainSpreadsheetData('2PACX-1vQK8mXB2urT65dr12o77jSmdHk1SSfF3qDY5PUXwWRLww-_TSjoEVsDOw22q9_PHSYiYx31l9pdPUzP', '1606349766').split('\n');
+            mapsData.forEach((map) => {
+                const data = map.split('\t');
+                this.allMaps.push({
+                    'id': data[0],
+                    'author': data[1],
+                    'name': data[2],
+                    'description': data[3],
+                    'tags': data[4].split(','),
+                });
+            });
+        }
+        draw(element) {
+            super.draw(element);
+            this.createSpace("100px");
+            this.leftContainer = this.createContainer(15, false);
+            this.leftContainer.container.style.backgroundColor = 'var(--norm-blue)';
+            this.leftContainer.createSpace('50px');
+            this.modsCategory = this.leftContainer.createButton('Моды', '100px')
+            this.modsCategory.style.boxSizing = 'border-box';
+            this.modsCategory.style.padding = '10px';
+            this.modsCategory.style.marginBottom = '15px';
+            this.modsCategory.style.borderRadius = '0';
+            this.modsCategory.style.fontSize = '30px';
+            this.modsCategory.style.fontWeight = '700';
+            this.modsCategory.onclick = () => this.selectMods();
+            this.mapsCategory = this.leftContainer.createButton('Карты', '100px')
+            this.mapsCategory.style.boxSizing = 'border-box';
+            this.mapsCategory.style.padding = '10px';
+            this.mapsCategory.style.marginBottom = '15px';
+            this.mapsCategory.style.borderRadius = '0';
+            this.mapsCategory.style.fontSize = '30px';
+            this.mapsCategory.style.fontWeight = '700';
+            this.mapsCategory.onclick = () => this.selectMaps();
+            this.tagsContainer = this.leftContainer.createContainer(1);
+            this.createSpace("50px");
+            this.cardsContainer = this.createContainer(70, false);
+            this.cardsContainer.container.style.margin = '25px'
+            this.maxCards = 4;
+            this.createSpace("100px");
+            this.selectMods();
+        }
+        selectMods() {
+            this.modsCategory.style.backgroundColor = 'var(--background)';
+            this.modsCategory.style.cursor = 'default';
+            this.mapsCategory.style.backgroundColor = 'var(--blue)';
+            this.mapsCategory.style.cursor = 'pointer';
+            this.selectedCategory = 'mods';
+            this.cardsContainer.clear();
+            for (let i = 0; i < this.allMods.length; i += this.maxCards) {
+                const mods = this.allMods.slice(i, i + this.maxCards);
+                const groupContainer = this.cardsContainer.createContainer('300px')
+                let b = 0
+                mods.forEach((mod) => {
+                    if (b === 1) groupContainer.createSpace('50px')
+                    const modCard = groupContainer.createContainer(10, false);
+                    modCard.container.style.backgroundColor = 'var(--norm-blue)';
+                    modCard.container.style.borderRadius = '4%';
+                    // modCard.createImage(mod.icon, 5)
+                    const header = modCard.createContainer(5);
+                    header.container.style.borderRadius = '10px 10px 0 0';
+                    header.container.style.backgroundColor = 'var(--blue)'
+                    const icon = header.createImage(mod.icon, 'auto');
+                    icon.style.margin = '5px';
+                    icon.style.backgroundColor = 'var(--background)';
+                    icon.style.borderRadius = '20px';
+                    const rightHeader = header.createContainer(25, false);
+                    const title = rightHeader.createText(mod.name, 5);
+                    title.style.textAlign = 'center'
+                    title.style.margin = '0'
+                    title.style.fontSize = '24px'
+                    console.log(loadResults)
+                    let label = 'Установить';
+                    let color = 'var(--light-green)';
+                    let cursor = 'pointer';
+                    let callback = () => {
+                        loadResults[mod.id] = {'manifest': mod, 'code': 5};
+                        modsToLoad.push([true, mod.source]);
+                        localStorage.setItem('mods', JSON.stringify(modsToLoad));
+                        this.selectMods();
+                    }
+                    if (loadResults[mod.id] !== undefined) {
+                        label = 'Установлен';
+                        color = 'var(--light-blue)';
+                        cursor = 'default';
+                        callback = () => {
+                            // loadResults[mod.id] = {'manifest': mod, 'code': 5};
+                            // modsToLoad.forEach((pair) => {
+                            //     if (pair[1] === mod.source) modsToLoad.splice(modsToLoad.indexOf(pair), 1);
+                            // });
+                            // localStorage.setItem('mods', JSON.stringify(modsToLoad));
+                            // this.selectMods();
+                        }
+                    }
+                    const downloadBtn = rightHeader.createButton(label, 5);
+                    downloadBtn.style.padding = '0'
+                    downloadBtn.style.margin = '5px 50px';
+                    downloadBtn.style.borderRadius = '12px';
+                    downloadBtn.style.backgroundColor = color;
+                    downloadBtn.style.cursor = cursor;
+                    downloadBtn.onclick = () => callback();
+                    const description = modCard.createText('Автор: ' + mod.author + '<br>' + (mod.description ?? 'Описания нету'), 15)
+                    description.style.margin = '5px'
+                    b = 1;
+                });
+                for (let i = 0; i < this.maxCards - mods.length; i += 1) {
+                    if (b === 1) groupContainer.createSpace('50px');
+                    groupContainer.createSpace(10);
+                    b = 1;
+                }
+            }
+        }
+        selectMaps() {
+            this.modsCategory.style.backgroundColor = 'var(--blue)';
+            this.modsCategory.style.cursor = 'pointer';
+            this.mapsCategory.style.backgroundColor = 'var(--background)';
+            this.mapsCategory.style.cursor = 'default';
+            this.selectedCategory = 'maps';
+            this.cardsContainer.clear();
+            for (let i = 0; i < this.allMaps.length; i += this.maxCards) {
+                const maps = this.allMaps.slice(i, i + this.maxCards);
+                const groupContainer = this.cardsContainer.createContainer('300px')
+                let b = 0
+                maps.forEach((map) => {
+                    if (b === 1) groupContainer.createSpace('50px')
+                    const modCard = groupContainer.createContainer(10, false);
+                    modCard.container.style.backgroundColor = 'var(--norm-blue)';
+                    modCard.container.style.borderRadius = '4%';
+                    const header = modCard.createContainer(5, false);
+                    header.container.style.borderRadius = '10px 10px 0 0';
+                    header.container.style.backgroundColor = 'var(--blue)'
+                    // const icon = header.createText('▶', '57.5px');
+                    // icon.style.padding = '10px';
+                    // icon.style.margin = '5px';
+                    // icon.style.borderRadius = '20px';
+                    // icon.style.fontSize = '30px';
+                    // icon.style.textAlign = 'center'
+                    // icon.style.backgroundColor = 'var(--light-green)';
+                    // icon.style.filter = 'invert(1)'
+                    const title = header.createText(map.name, 5);
+                    title.style.textAlign = 'center';
+                    title.style.margin = '0';
+                    title.style.fontSize = '24px';
+                    title.style.lineHeight = '2';
+                    const playBtn = header.createButton('Запустить', 3);
+                    playBtn.style.padding = '0'
+                    playBtn.style.margin = '0 50px 5px';
+                    playBtn.style.borderRadius = '12px';
+                    playBtn.style.backgroundColor = 'var(--light-green)';
+                    playBtn.style.cursor = 'pointer';
+                    playBtn.onclick = () => window.location.pathname = '/map-' + map.id;
+                    const description = modCard.createText('Автор: ' + map.author + '<br>' + (map.description ?? 'Описания нету'), 15)
+                    description.style.margin = '5px'
+                    b = 1;
+                });
+                for (let i = 0; i < this.maxCards - maps.length; i += 1) {
+                    if (b === 1) groupContainer.createSpace('50px');
+                    groupContainer.createSpace(10);
+                    b = 1;
+                }
+            }
         }
     }
     new class ModalHandler {
@@ -812,10 +1015,6 @@
     };
     // endregion
     // region Mod Loading
-    function raw(path) {
-        if (path.includes('githubusercontent')) return path;
-        else return path.replace('github', 'raw.githubusercontent').replace('blob', '');
-    }
     if (localStorage.getItem('xdlcversion') !== fapi.VERSION.toString()) {
         localStorage.setItem('xdlcversion', fapi.VERSION.toString());
         localStorage.setItem('mods', '[]');
@@ -827,27 +1026,12 @@
         const enabled = pair[0];
         const jsonURL = pair[1];
         if (!enabled) return; // TODO: Добавить потом выключение мода
-        const xhr = new XMLHttpRequest();
-        xhr.open("GET", raw(jsonURL), false);
-        xhr.send();
-        let modJson;
-        try {
-            modJson = JSON.parse(xhr.responseText)
-            if (modJson.name === undefined) modJson.name = 'Unknown';
-            if (modJson.author === undefined) modJson.author = 'Unknown';
-            if (modJson.icon === undefined) modJson.icon = 'Unknown';
-            if (modJson.dependencies === undefined) modJson.dependencies = [];
-
-            if (modJson.id === undefined) modJson = false;
-            else if (modJson.script === undefined) modJson = false;
-        } catch {
-            modJson = false;
-        }
-        if (xhr.status !== 200 || !modJson) {
+        const manifest = obtainModManifest(jsonURL)
+        if (manifest === undefined) {
             modsToLoad.splice(modsToLoad.indexOf(pair), 1);
             return;
         }
-        manifests[modJson.id] = modJson;
+        manifests[manifest.id] = manifest;
     })
     function checkCircularDependency(id) {
         return false; // TODO: Проверка цикличных зависимостей
@@ -862,22 +1046,20 @@
             loadResults[id] = {'manifest': manifest, 'code': 3};
             return false;
         }
-        let dependencies_founded = true;
         const not_founded_dependencies = [];
         manifest.dependencies.forEach((dependency) => {
             if (!manifests.includes(dependency)) {
-                dependencies_founded = false;
                 not_founded_dependencies.push(dependency);
-                return false;
+                return;
             }
             loadMod(dependency, manifests[dependency]);
         });
-        if (!dependencies_founded) {
+        if (not_founded_dependencies.length !== 0) {
             loadResults[id] = {'manifest': manifest, 'code': 4, 'not_founded': not_founded_dependencies};
             return false;
         }
         const xhr = new XMLHttpRequest();
-        xhr.open("GET", raw(manifest.script), false);
+        xhr.open("GET", prettifyModUrl(manifest.script), false);
         xhr.send();
         if (xhr.status !== 200) {
             loadResults[id] = {'manifest': manifest, 'code': 0};
@@ -902,6 +1084,7 @@
      * 4 - зависимость не найдена
      * 5 - требуется перезагрузка
      * 6 - версия модлоадера отличается
+     * 7 - был удалён
      */
     // endregion
     // region Modifying Modules
@@ -920,6 +1103,7 @@
                 arrow.y = ay;
                 arrow.wx = x;
                 arrow.wy = y;
+                arrow.handler = fapi.ARROWS[0];
             }
             if (!hz || arrow.type === type || !arrow.canBeEdited || modules.PlayerSettings.levelArrows.includes(arrow.type)) return;
             arrow.signal = 0;
@@ -957,6 +1141,7 @@
             if (arrow !== undefined) {
                 arrow.signalsCount += add;
                 arrow.tempRefs.push(fromArrow);
+                // if (arrow.chunk !== undefined) arrow.chunk.changed = true;
             }
         }
         /**
@@ -965,7 +1150,10 @@
          * @param {Object.<string,any> | void} arrow Стрелочка
          */
         blockSignal(arrow) {
-            if (arrow !== undefined) arrow.signal = 0;
+            if (arrow !== undefined) {
+                arrow.signal = 0;
+                // if (arrow.chunk !== undefined) arrow.chunk.changed = true;
+            }
         }
         /**
          * Сложный вариант получения стрелочки
@@ -1077,17 +1265,21 @@
          */
         update(gameMap) {
             imodules.gamemap = gameMap;
-            const chunks = gameMap.chunks;
-            chunks.forEach((chunk) => {
-                const arrows = chunk.arrows;
+            const chunks = Array.from(gameMap.chunks.values());
+            const chunksLength = chunks.length;
+            // let anyProcessed = false;
+            for (let ci = 0; ci < chunksLength; ci++) {
+                const arrows = chunks[ci].arrows;
+                // chunks[ci].changed = false;
                 for (let ai = 0; ai < 256; ai++) {
                     const arrow = arrows[ai];
                     this.toLast(arrow);
                     arrow.handler.transmit(arrow);
                 }
-            });
-            chunks.forEach((chunk) => {
-                const arrows = chunk.arrows;
+            }
+            for (let ci = 0; ci < chunksLength; ci++) {
+                // if (chunks[ci].changed === false && gameMap.initialized) return;
+                const arrows = chunks[ci].arrows;
                 for (let ai = 0; ai < 256; ai++) {
                     const arrow = arrows[ai];
                     arrow.refs = arrow.tempRefs;
@@ -1096,14 +1288,17 @@
                     arrow.lastSignalsCount = arrow.signalsCount;
                     arrow.signalsCount = 0;
                 }
-            });
-            chunks.forEach((chunk) => {
-                const arrows = chunk.arrows;
+                // anyProcessed = true;
+            }
+            for (let ci = 0; ci < chunksLength; ci++) {
+                // if (chunks[ci].changed === false && gameMap.initialized) return;
+                const arrows = chunks[ci].arrows;
                 for (let ai = 0; ai < 256; ai++) {
                     const arrow = arrows[ai];
                     arrow.handler.block(arrow);
                 }
-            });
+            }
+            // if (!anyProcessed) gameMap.initialized = false;
             if (!fapi.experimental.updateLevelArrow) return;
             gameMap.chunks.forEach((chunk) => {
                 chunk.levelArrows.forEach((levelArrow) => {
@@ -1315,6 +1510,15 @@
             this.wy = 0;
             this.custom_data = [];
             this.handler = fapi.ARROWS[0];
+        }
+    });
+    ref('Chunk', (arrow) => class Arrow extends arrow {
+        removeArrow(e, t) {
+            this.arrows[e + t * n.CHUNK_SIZE].type = 0;
+            this.arrows[e + t * n.CHUNK_SIZE].rotation = 0;
+            this.arrows[e + t * n.CHUNK_SIZE].flipped = false;
+            this.arrows[e + t * n.CHUNK_SIZE].signal = 0;
+            this.arrows[e + t * n.CHUNK_SIZE].handler = fapi.ARROWS[0];
         }
     });
     ref('PlayerAccess', (playerAccess) => class PlayerAccess extends playerAccess {
@@ -1665,7 +1869,8 @@
             // endregion
         }
         drawArrow(e, t, s, i, n, o, arrow) {
-            s = arrow.handler.draw(arrow, s - 1);
+            if (s > fapi.BASIC_TYPES) s = arrow.handler.draw(arrow, fapi.getArrowByType(s).TEXTURE_INDEX);
+            else s = arrow.handler.draw(arrow, s - 1);
             if (s === -1) return;
             if (this.lastArrowType !== s) {
                 let x;
@@ -1744,9 +1949,9 @@
                                     a = i,
                                     r = 0;
                                 1 === this.pasteDirection ? (o = -i, a = s, r = 1) : 2 === this.pasteDirection ? (o = -s, a = -i, r = 2) : 3 === this.pasteDirection && (o = i, a = -s, r = 3);
-                                const l = (o + this.mousePosition[0]) * this.scale + this.offset[0] * this.scale / n.CELL_SIZE + .025 * this.scale,
-                                    h = (a + this.mousePosition[1]) * this.scale + this.offset[1] * this.scale / n.CELL_SIZE + .025 * this.scale;
-                                this.render.drawArrow(l, h, e.type, e.signal, (e.rotation + r) % 4, e.flipped, o)
+                                const l = (o + this.mousePosition[0]) * this.scale + this.offset[0] * this.scale / modules.CELL_SIZE + .025 * this.scale,
+                                    h = (a + this.mousePosition[1]) * this.scale + this.offset[1] * this.scale / modules.CELL_SIZE + .025 * this.scale;
+                                this.render.drawArrow(l, h, e.type, e.signal, (e.rotation + r) % 4, e.flipped, e)
                             }))
                         }
                         if (this.render.disableArrows(), this.render.prepareSolidColor(), this.render.setSolidColor(.25, .5, 1, .25), this.selectedMap.getSelectedArrows().forEach((e => {

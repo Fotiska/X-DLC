@@ -4,5 +4,6 @@
   "author": "Фотис",
   "script": "https://raw.githubusercontent.com/Fotiska/X-DLC/main/DLCCore/mod.js",
   "id": "fotis.dlc_core",
+  "description": "Добавляет лампочку, фиолетовую стрелочку, блок текста и зажимную кнопку.",
   "xdlcversion": 2
 }

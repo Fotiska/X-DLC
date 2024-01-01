@@ -112,7 +112,7 @@ function seq2text(seq) {
 const text_block = mod.registerArrow(2)
 text_block.name =['Block of text','Блок текста','Блок текста','Блок текста'];
 text_block.activation = ["On any incoming signal.","Любым входящим сигналом.","Будь-яким вхідним сигналом.","Любым уваходным сігналам."];
-text_block.action =["Sends a signal diagonally, skipping `n` cells.","Передает сигнал по диагонали через `n` клеток.","Передає сигнал вперед через `n` клітини.","Перадае сігнал наперад праз `n` клеткі."];
+text_block.action =["Does nothing.","Ничего не делает.","Нічого не робить.","Нічога не рабіць."];
 text_block.icon_url = "https://raw.githubusercontent.com/Fotiska/X-DLC/main/images/text_block.png";
 text_block.clickable = true;
 text_block.click = (arrow) => {
